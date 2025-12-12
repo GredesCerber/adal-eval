@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -80,11 +81,11 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     actor_type: Mapped[str] = mapped_column(String(32))  # 'admin' | 'user'
-    actor_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    actor_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     action: Mapped[str] = mapped_column(String(120))
     entity_type: Mapped[str] = mapped_column(String(64))
-    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    entity_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     before_json: Mapped[str] = mapped_column(Text, default="")
     after_json: Mapped[str] = mapped_column(Text, default="")
