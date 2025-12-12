@@ -15,6 +15,13 @@ let me = null;
 let criteria = [];
 let currentTarget = null;
 
+function normalizeGroupValue(inputEl) {
+  if (!inputEl) return '';
+  const cleaned = (inputEl.value || '').replace(/\s+/g, '');
+  if (cleaned !== inputEl.value) inputEl.value = cleaned;
+  return cleaned;
+}
+
 function setupNoAutofill(inputEl) {
   if (!inputEl) return;
   // Some browsers ignore autocomplete=off and may inject saved username into unrelated inputs.
@@ -59,7 +66,7 @@ async function loadStudents() {
   status.textContent = 'Загрузка...';
   try {
     const q = qs('#studentQ').value.trim();
-    const group = qs('#studentGroup').value.trim();
+    const group = normalizeGroupValue(qs('#studentGroup'));
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (group) params.set('group', group);
@@ -270,7 +277,7 @@ async function loadResults() {
   status.textContent = '...';
   try {
     const q = qs('#resultsQ').value.trim();
-    const group = qs('#resultsGroup').value.trim();
+    const group = normalizeGroupValue(qs('#resultsGroup'));
     const sort = qs('#resultsSort').value;
     const order = qs('#resultsOrder').value;
 
@@ -341,7 +348,7 @@ async function updateProfile() {
   if (status) status.textContent = 'Сохранение...';
   try {
     const full_name = (qs('#editFull')?.value || '').trim();
-    const group = (qs('#editGroup')?.value || '').trim();
+    const group = normalizeGroupValue(qs('#editGroup'));
     const nickname = (qs('#editNick')?.value || '').trim();
 
     const body = {};
@@ -399,8 +406,10 @@ function bindUi() {
   });
 
   qs('#reloadStudents').addEventListener('click', loadStudents);
+  qs('#studentQ').addEventListener('input', debounce(loadStudents, 300));
+  qs('#studentGroup').addEventListener('input', debounce(() => { normalizeGroupValue(qs('#studentGroup')); loadStudents(); }, 200));
   qs('#resultsQ').addEventListener('input', debounce(loadResults, 300));
-  qs('#resultsGroup').addEventListener('input', debounce(loadResults, 300));
+  qs('#resultsGroup').addEventListener('input', debounce(() => { normalizeGroupValue(qs('#resultsGroup')); loadResults(); }, 200));
   qs('#resultsSort').addEventListener('change', loadResults);
   qs('#resultsOrder').addEventListener('change', loadResults);
   const saveProfileBtn = qs('#saveProfile');

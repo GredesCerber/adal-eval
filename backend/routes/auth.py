@@ -21,7 +21,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     user = User(
         nickname=payload.nickname.strip(),
         full_name=payload.full_name.strip(),
-        group=payload.group.strip(),
+        group=payload.group.replace(" ", "").strip(),
         password_hash=hash_password(payload.password),
         is_active=True,
     )

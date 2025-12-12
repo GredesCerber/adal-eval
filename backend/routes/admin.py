@@ -79,7 +79,7 @@ def admin_create_user(
     u = User(
         nickname=payload.nickname.strip(),
         full_name=payload.full_name.strip(),
-        group=payload.group.strip(),
+        group=payload.group.replace(" ", "").strip(),
         password_hash=hash_password(payload.password),
         is_active=True,
     )
@@ -120,7 +120,7 @@ def admin_update_user(
     if payload.full_name is not None:
         u.full_name = payload.full_name.strip()
     if payload.group is not None:
-        u.group = payload.group.strip()
+        u.group = payload.group.replace(" ", "").strip()
     if payload.is_active is not None:
         u.is_active = bool(payload.is_active)
 

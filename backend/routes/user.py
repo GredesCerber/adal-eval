@@ -45,7 +45,8 @@ def _compute_results(
 
     users_q = db.query(User).filter(User.is_active.is_(True))
     if group:
-        users_q = users_q.filter(User.group == group)
+        group_clean = group.replace(" ", "")
+        users_q = users_q.filter(func.replace(User.group, " ", "").ilike(f"%{group_clean}%"))
     if q:
         like = f"%{q.strip()}%"
         users_q = users_q.filter((User.full_name.ilike(like)) | (User.nickname.ilike(like)))
@@ -174,7 +175,7 @@ def update_me(payload: UserSelfUpdate, db: Session = Depends(get_db), current: U
         changed = True
 
     if payload.group is not None:
-        new_group = payload.group.strip()
+        new_group = payload.group.replace(" ", "").strip()
         if not new_group:
             raise HTTPException(status_code=400, detail="Группа не может быть пустой")
         current.group = new_group
@@ -237,7 +238,8 @@ def list_students(
 ):
     query = db.query(User).filter(User.is_active.is_(True), User.id != current.id)
     if group:
-        query = query.filter(User.group == group)
+        group_clean = group.replace(" ", "")
+        query = query.filter(func.replace(User.group, " ", "").ilike(f"%{group_clean}%"))
     if q:
         like = f"%{q.strip()}%"
         query = query.filter((User.full_name.ilike(like)) | (User.nickname.ilike(like)))
