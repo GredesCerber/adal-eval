@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
@@ -18,7 +18,7 @@ basic = HTTPBasic(auto_error=False)
 
 
 def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
     if credentials is None or not credentials.credentials:
@@ -40,7 +40,7 @@ def get_current_user(
 
 def require_admin(
     request: Request,
-    creds: Annotated[HTTPBasicCredentials | None, Depends(basic)],
+    creds: Annotated[Optional[HTTPBasicCredentials], Depends(basic)],
 ) -> str:
     if creds is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Требуется авторизация администратора")

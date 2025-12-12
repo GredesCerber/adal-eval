@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import csv
 import datetime as dt
+from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -36,8 +37,8 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 def admin_list_users(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
-    q: str | None = None,
-    group: str | None = None,
+    q: Optional[str] = None,
+    group: Optional[str] = None,
     limit: int = 200,
     offset: int = 0,
 ):
@@ -232,9 +233,9 @@ def admin_delete_criteria(criterion_id: int, ip: str = Depends(require_admin), d
 def admin_list_evaluations(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
-    target_id: int | None = None,
-    rater_id: int | None = None,
-    criterion_id: int | None = None,
+    target_id: Optional[int] = None,
+    rater_id: Optional[int] = None,
+    criterion_id: Optional[int] = None,
     anomaly_only: bool = False,
     limit: int = 300,
     offset: int = 0,
@@ -310,9 +311,9 @@ def admin_list_evaluations(
 def admin_export_evaluations_xlsx(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
-    target_id: int | None = None,
-    rater_id: int | None = None,
-    criterion_id: int | None = None,
+    target_id: Optional[int] = None,
+    rater_id: Optional[int] = None,
+    criterion_id: Optional[int] = None,
     anomaly_only: bool = False,
 ):
     # Reuse the same query as list but export to Excel
@@ -407,9 +408,9 @@ def admin_export_evaluations_xlsx(
 def admin_export_evaluations_csv(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
-    target_id: int | None = None,
-    rater_id: int | None = None,
-    criterion_id: int | None = None,
+    target_id: Optional[int] = None,
+    rater_id: Optional[int] = None,
+    criterion_id: Optional[int] = None,
     anomaly_only: bool = False,
 ):
     q = (

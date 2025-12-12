@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ def compute_stat(values: list[float]) -> Stat:
     return Stat(n=n, mean=mean, stdev=stdev)
 
 
-def zscore(value: float, stat: Stat) -> float | None:
+def zscore(value: float, stat: Stat) -> Optional[float]:
     if stat.n < 2 or stat.stdev <= 0:
         return None
     return (value - stat.mean) / stat.stdev

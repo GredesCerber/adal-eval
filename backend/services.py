@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Optional
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -68,7 +69,7 @@ def evaluation_to_dict(e: Evaluation, *, stats: dict[int, Stat]) -> dict:
     }
 
 
-def load_evaluation(db: Session, evaluation_id: int) -> Evaluation | None:
+def load_evaluation(db: Session, evaluation_id: int) -> Optional[Evaluation]:
     return (
         db.query(Evaluation)
         .options(joinedload(Evaluation.rater), joinedload(Evaluation.scores).joinedload(EvaluationScore.criterion))

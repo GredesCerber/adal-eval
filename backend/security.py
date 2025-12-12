@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Optional
 
 from jose import jwt
 from passlib.context import CryptContext
@@ -19,7 +20,7 @@ def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
 
 
-def create_access_token(*, subject: str, minutes: int | None = None) -> str:
+def create_access_token(*, subject: str, minutes: Optional[int] = None) -> str:
     expires_minutes = minutes if minutes is not None else settings.jwt_expires_min
     now = dt.datetime.utcnow()
     payload = {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 from collections import defaultdict
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -31,8 +32,8 @@ router = APIRouter(prefix="/api", tags=["user"])
 def _compute_results(
     *,
     db: Session,
-    q: str | None = None,
-    group: str | None = None,
+    q: Optional[str] = None,
+    group: Optional[str] = None,
     sort: str = "name",
     order: str = "asc",
 ) -> list[ResultsRow]:
@@ -68,7 +69,7 @@ def _compute_results(
 
     out: list[ResultsRow] = []
     for u in users:
-        crit_map: dict[str, float | None] = {}
+        crit_map: dict[str, Optional[float]] = {}
         values: list[float] = []
         for cid, c in criteria_by_id.items():
             val = agg.get(u.id, {}).get(cid)
@@ -157,8 +158,8 @@ def list_criteria(active_only: bool = True, db: Session = Depends(get_db), _: Us
 def list_students(
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
-    q: str | None = Query(default=None, description="search by nickname/full name"),
-    group: str | None = None,
+    q: Optional[str] = Query(default=None, description="search by nickname/full name"),
+    group: Optional[str] = None,
 ):
     query = db.query(User).filter(User.is_active.is_(True), User.id != current.id)
     if group:
@@ -278,8 +279,8 @@ def create_evaluation(target_id: int, payload: CreateEvaluationRequest, db: Sess
 def results(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-    q: str | None = None,
-    group: str | None = None,
+    q: Optional[str] = None,
+    group: Optional[str] = None,
     sort: str = "name",
     order: str = "asc",
 ):

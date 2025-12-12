@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -12,10 +12,10 @@ def write_audit(
     db: Session,
     *,
     actor_type: str,
-    actor_user_id: int | None,
+    actor_user_id: Optional[int],
     action: str,
     entity_type: str,
-    entity_id: int | None,
+    entity_id: Optional[int],
     before: Any = None,
     after: Any = None,
     ip: str = "",
