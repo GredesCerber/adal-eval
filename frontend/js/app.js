@@ -1,5 +1,13 @@
 import { api, clearToken, fmtDate, openModal, closeModal, qs, qsa, escapeHtml } from '/js/common.js';
 
+function debounce(fn, ms = 300) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
 let me = null;
 let criteria = [];
 let currentTarget = null;
@@ -76,21 +84,50 @@ async function loadStudents() {
 
 function buildScoreInputs() {
   const wrap = document.createElement('div');
-  wrap.className = 'row';
-  wrap.style.flexWrap = 'wrap';
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
+  wrap.style.gap = '10px';
+
   criteria.forEach(c => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '10px';
+
+    const label = document.createElement('div');
+    label.textContent = c.name;
+    label.style.flex = '1';
+    label.style.minWidth = '240px';
+    label.style.fontWeight = '600';
+    label.title = c.description || '';
+
+    const inputWrap = document.createElement('div');
+    inputWrap.style.display = 'flex';
+    inputWrap.style.alignItems = 'center';
+    inputWrap.style.gap = '6px';
+
     const input = document.createElement('input');
     input.type = 'number';
     input.step = '1';
     input.min = '0';
     input.max = String(Math.floor(Number(c.max_score)));
-    input.placeholder = `${c.name}`;
+    input.placeholder = `${Math.floor(Number(c.max_score))}`;
     input.inputMode = 'numeric';
     input.autocomplete = 'off';
     input.dataset.criterionId = c.id;
     input.dataset.maxScore = String(Math.floor(Number(c.max_score)));
-    input.style.width = '220px';
-    wrap.appendChild(input);
+    input.style.width = '120px';
+
+    const maxInfo = document.createElement('span');
+    maxInfo.className = 'muted';
+    maxInfo.textContent = `из ${Math.floor(Number(c.max_score))}`;
+
+    inputWrap.appendChild(input);
+    inputWrap.appendChild(maxInfo);
+
+    row.appendChild(label);
+    row.appendChild(inputWrap);
+    wrap.appendChild(row);
   });
   return wrap;
 }
@@ -290,6 +327,13 @@ async function changePassword() {
 }
 
 function bindUi() {
+  const navToggle = qs('#navToggle');
+  const nav = document.querySelector('.nav');
+  if (navToggle && nav) {
+    navToggle.addEventListener('click', () => nav.classList.toggle('open'));
+    nav.querySelectorAll('a,button').forEach(el => el.addEventListener('click', () => nav.classList.remove('open')));
+  }
+
   qsa('button[data-tab]').forEach(btn => {
     btn.addEventListener('click', async () => {
       showTab(btn.dataset.tab);
@@ -306,7 +350,10 @@ function bindUi() {
   });
 
   qs('#reloadStudents').addEventListener('click', loadStudents);
-  qs('#reloadResults').addEventListener('click', loadResults);
+  qs('#resultsQ').addEventListener('input', debounce(loadResults, 300));
+  qs('#resultsGroup').addEventListener('input', debounce(loadResults, 300));
+  qs('#resultsSort').addEventListener('change', loadResults);
+  qs('#resultsOrder').addEventListener('change', loadResults);
 
   qs('#mClose').addEventListener('click', () => closeModal('studentModal'));
   qs('#mSubmit').addEventListener('click', submitEvaluation);

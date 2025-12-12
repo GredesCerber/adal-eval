@@ -10,6 +10,10 @@
   <div class="container">
     <div class="header">
       <div class="brand">Платформа оценивания студентов</div>
+      <button class="nav-toggle" id="navToggle" aria-label="Меню">
+        <span class="bar"></span>
+        <span>Меню</span>
+      </button>
       <div class="nav">
         <a class="tabbtn" href="/register.html">Регистрация</a>
       </div>
@@ -39,6 +43,13 @@
 
   <script type="module">
     import { api, setToken, qs } from '/js/common.js';
+
+    const navToggle = document.getElementById('navToggle');
+    const nav = document.querySelector('.nav');
+    if (navToggle && nav) {
+      navToggle.addEventListener('click', () => nav.classList.toggle('open'));
+      nav.querySelectorAll('a,button').forEach(el => el.addEventListener('click', () => nav.classList.remove('open')));
+    }
 
     const form = qs('#form');
     const status = qs('#status');

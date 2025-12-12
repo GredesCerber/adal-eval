@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import io
+import csv
+import datetime as dt
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 
 from ..audit import write_audit
@@ -299,6 +304,189 @@ def admin_list_evaluations(
         )
 
     return {"total": total, "items": out}
+
+
+@router.get("/evaluations/export/xlsx")
+def admin_export_evaluations_xlsx(
+    ip: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+    target_id: int | None = None,
+    rater_id: int | None = None,
+    criterion_id: int | None = None,
+    anomaly_only: bool = False,
+):
+    # Reuse the same query as list but export to Excel
+    q = (
+        db.query(EvaluationScore)
+        .options(
+            joinedload(EvaluationScore.evaluation).joinedload(Evaluation.rater),
+            joinedload(EvaluationScore.evaluation).joinedload(Evaluation.target),
+            joinedload(EvaluationScore.criterion),
+        )
+        .join(Evaluation, Evaluation.id == EvaluationScore.evaluation_id)
+        .join(Criterion, Criterion.id == EvaluationScore.criterion_id)
+    )
+    if target_id is not None:
+        q = q.filter(Evaluation.target_id == target_id)
+    if rater_id is not None:
+        q = q.filter(Evaluation.rater_id == rater_id)
+    if criterion_id is not None:
+        q = q.filter(EvaluationScore.criterion_id == criterion_id)
+
+    items = q.order_by(EvaluationScore.updated_at.desc()).all()
+
+    stats_cache: dict[int, dict[int, object]] = {}
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Evaluations"
+    ws.append(
+        [
+            "Target",
+            "Rater",
+            "Criterion",
+            "Score",
+            "Max",
+            "Mean",
+            "Delta",
+            "z",
+            "Anomaly",
+            "Comment",
+            "Created",
+            "Updated",
+        ]
+    )
+
+    for s in items:
+        t_id = s.evaluation.target_id
+        if t_id not in stats_cache:
+            stats_cache[t_id] = get_stats_for_target(db, target_id=t_id, include_inactive=True)
+        stat = stats_cache[t_id].get(int(s.criterion_id))
+
+        mean = stat.mean if stat else None  # type: ignore
+        stdev = stat.stdev if stat else None  # type: ignore
+        delta = float(s.score) - mean if mean is not None else None
+        z = delta / stdev if delta is not None and stdev and stdev > 0 else None
+        is_anomaly = bool(z is not None and abs(z) >= settings.anomaly_zscore and stat and getattr(stat, "n", 0) >= settings.anomaly_min_samples)
+
+        if anomaly_only and not is_anomaly:
+            continue
+
+        ws.append(
+            [
+                s.evaluation.target.full_name,
+                s.evaluation.rater.full_name,
+                s.criterion.name,
+                float(s.score),
+                float(s.criterion.max_score),
+                mean,
+                delta,
+                z,
+                "yes" if is_anomaly else "no",
+                s.evaluation.comment or "",
+                s.evaluation.created_at,
+                s.updated_at,
+            ]
+        )
+
+    bio = io.BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+
+    filename = f"evaluations-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.xlsx"
+    return StreamingResponse(
+        bio,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/evaluations/export/csv")
+def admin_export_evaluations_csv(
+    ip: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+    target_id: int | None = None,
+    rater_id: int | None = None,
+    criterion_id: int | None = None,
+    anomaly_only: bool = False,
+):
+    q = (
+        db.query(EvaluationScore)
+        .options(
+            joinedload(EvaluationScore.evaluation).joinedload(Evaluation.rater),
+            joinedload(EvaluationScore.evaluation).joinedload(Evaluation.target),
+            joinedload(EvaluationScore.criterion),
+        )
+        .join(Evaluation, Evaluation.id == EvaluationScore.evaluation_id)
+        .join(Criterion, Criterion.id == EvaluationScore.criterion_id)
+    )
+    if target_id is not None:
+        q = q.filter(Evaluation.target_id == target_id)
+    if rater_id is not None:
+        q = q.filter(Evaluation.rater_id == rater_id)
+    if criterion_id is not None:
+        q = q.filter(EvaluationScore.criterion_id == criterion_id)
+
+    items = q.order_by(EvaluationScore.updated_at.desc()).all()
+
+    stats_cache: dict[int, dict[int, object]] = {}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "target",
+        "rater",
+        "criterion",
+        "score",
+        "max",
+        "mean",
+        "delta",
+        "z",
+        "anomaly",
+        "comment",
+        "created",
+        "updated",
+    ])
+
+    for s in items:
+        t_id = s.evaluation.target_id
+        if t_id not in stats_cache:
+            stats_cache[t_id] = get_stats_for_target(db, target_id=t_id, include_inactive=True)
+        stat = stats_cache[t_id].get(int(s.criterion_id))
+
+        mean = stat.mean if stat else None  # type: ignore
+        stdev = stat.stdev if stat else None  # type: ignore
+        delta = float(s.score) - mean if mean is not None else None
+        z = delta / stdev if delta is not None and stdev and stdev > 0 else None
+        is_anomaly = bool(z is not None and abs(z) >= settings.anomaly_zscore and stat and getattr(stat, "n", 0) >= settings.anomaly_min_samples)
+
+        if anomaly_only and not is_anomaly:
+            continue
+
+        writer.writerow([
+            s.evaluation.target.full_name,
+            s.evaluation.rater.full_name,
+            s.criterion.name,
+            float(s.score),
+            float(s.criterion.max_score),
+            mean if mean is not None else "",
+            delta if delta is not None else "",
+            z if z is not None else "",
+            "yes" if is_anomaly else "no",
+            (s.evaluation.comment or "").replace("\n", " ").strip(),
+            s.evaluation.created_at.isoformat() if s.evaluation.created_at else "",
+            s.updated_at.isoformat() if s.updated_at else "",
+        ])
+
+    output.seek(0)
+    filename = f"evaluations-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue().encode("utf-8-sig")]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 @router.patch("/evaluation-scores/{score_id}", response_model=dict)

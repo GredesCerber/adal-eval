@@ -2,30 +2,25 @@ import { api, qs, qsa, openModal, closeModal, escapeHtml, fmtDate } from '/js/co
 
 const BASIC_KEY = 'sep.admin.basic';
 
+function debounce(fn, ms = 300) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
 function setupNoAutofill(inputEl) {
   if (!inputEl) return;
   inputEl.readOnly = true;
-  inputEl.addEventListener('focus', () => {
-    inputEl.readOnly = false;
-  }, { once: true });
-  setTimeout(() => {
-    if (inputEl.readOnly) inputEl.value = '';
-  }, 0);
+  inputEl.addEventListener('focus', () => { inputEl.readOnly = false; }, { once: true });
+  setTimeout(() => { if (inputEl.readOnly) inputEl.value = ''; }, 0);
 }
 
-function setBasic(b64) {
-  sessionStorage.setItem(BASIC_KEY, b64);
-}
-function getBasic() {
-  return sessionStorage.getItem(BASIC_KEY) || '';
-}
-function clearBasic() {
-  sessionStorage.removeItem(BASIC_KEY);
-}
-
-function b64(user, pass) {
-  return btoa(`${user}:${pass}`);
-}
+function setBasic(b64) { sessionStorage.setItem(BASIC_KEY, b64); }
+function getBasic() { return sessionStorage.getItem(BASIC_KEY) || ''; }
+function clearBasic() { sessionStorage.removeItem(BASIC_KEY); }
+function b64(user, pass) { return btoa(`${user}:${pass}`); }
 
 function showAdminTab(key) {
   qsa('button[data-atab]').forEach(b => b.classList.toggle('active', b.dataset.atab === key));
@@ -51,6 +46,15 @@ function bindModalClose() {
 
 let usersCache = [];
 let criteriaCache = [];
+
+function parseInputId(val) {
+  const num = parseInt((val || '').split(/\s+/)[0], 10);
+  return Number.isNaN(num) ? null : num;
+}
+
+function userOption(u) {
+  return `<option value="${u.id} · ${escapeHtml(u.full_name)} (@${escapeHtml(u.nickname)})"></option>`;
+}
 
 async function loadUsers() {
   const status = qs('#uStatus');
@@ -80,22 +84,13 @@ async function loadUsers() {
       </tr>
     `).join('');
 
-    // inline edit
-    qsa('span.inline', body).forEach(el => {
-      el.addEventListener('click', () => startInlineUserEdit(el));
-    });
-    qsa('input[type="checkbox"][data-u="active"]', body).forEach(el => {
-      el.addEventListener('change', () => patchUser(el.dataset.id, { is_active: el.checked }));
-    });
-    qsa('button[data-reset]', body).forEach(btn => {
-      btn.addEventListener('click', () => resetPassword(btn.dataset.reset));
-    });
-    qsa('button[data-del]', body).forEach(btn => {
-      btn.addEventListener('click', () => deleteUser(btn.dataset.del));
-    });
+    qsa('span.inline', body).forEach(el => el.addEventListener('click', () => startInlineUserEdit(el)));
+    qsa('input[type="checkbox"][data-u="active"]', body).forEach(el => el.addEventListener('change', () => patchUser(el.dataset.id, { is_active: el.checked })));
+    qsa('button[data-reset]', body).forEach(btn => btn.addEventListener('click', () => resetPassword(btn.dataset.reset)));
+    qsa('button[data-del]', body).forEach(btn => btn.addEventListener('click', () => deleteUser(btn.dataset.del)));
 
-    status.textContent = `Пользователей: ${res.total}`;
     await fillUserSelects();
+    status.textContent = `Пользователей: ${res.total}`;
   } catch (e) {
     status.textContent = e.message;
   }
@@ -126,11 +121,8 @@ function startInlineUserEdit(span) {
 }
 
 async function patchUser(id, patch) {
-  try {
-    await adminReq(`/api/admin/users/${id}`, { method: 'PATCH', body: patch });
-  } catch (e) {
-    alert(e.message);
-  }
+  try { await adminReq(`/api/admin/users/${id}`, { method: 'PATCH', body: patch }); }
+  catch (e) { alert(e.message); }
 }
 
 async function resetPassword(id) {
@@ -139,9 +131,7 @@ async function resetPassword(id) {
   try {
     await adminReq(`/api/admin/users/${id}/reset-password?new_password=${encodeURIComponent(np)}`, { method: 'POST' });
     alert('Пароль сброшен');
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 }
 
 async function deleteUser(id) {
@@ -149,19 +139,15 @@ async function deleteUser(id) {
   try {
     await adminReq(`/api/admin/users/${id}`, { method: 'DELETE' });
     await loadUsers();
-  } catch (e) {
-    alert(e.message);
-  }
-}
-
-function userOption(u) {
-  return `<option value="${u.id}">${escapeHtml(u.full_name)} (@${escapeHtml(u.nickname)})</option>`;
+  } catch (e) { alert(e.message); }
 }
 
 async function fillUserSelects() {
-  const opts = usersCache.map(userOption).join('');
-  qs('#eTarget').innerHTML = `<option value="">Оцениваемый: любой</option>${opts}`;
-  qs('#eRater').innerHTML = `<option value="">Оценивающий: любой</option>${opts}`;
+  const targetList = qs('#eTargetList');
+  const raterList = qs('#eRaterList');
+  const options = usersCache.map(userOption).join('');
+  targetList.innerHTML = options;
+  raterList.innerHTML = options;
 }
 
 async function loadCriteria() {
@@ -186,9 +172,7 @@ async function loadCriteria() {
     `).join('');
 
     qsa('span.inline[data-c]', qs('#cBody')).forEach(el => el.addEventListener('click', () => startInlineCriterionEdit(el)));
-    qsa('input[type="checkbox"][data-c="active"]', qs('#cBody')).forEach(el => {
-      el.addEventListener('change', () => patchCriterion(el.dataset.id, { active: el.checked }));
-    });
+    qsa('input[type="checkbox"][data-c="active"]', qs('#cBody')).forEach(el => el.addEventListener('change', () => patchCriterion(el.dataset.id, { active: el.checked })));
     qsa('button[data-cedit]', qs('#cBody')).forEach(btn => btn.addEventListener('click', () => openEditCriterion(btn.dataset.cedit)));
     qsa('button[data-cdel]').forEach(btn => btn.addEventListener('click', () => deleteCriterion(btn.dataset.cdel)));
 
@@ -196,18 +180,13 @@ async function loadCriteria() {
     qs('#eCrit').innerHTML = `<option value="">Критерий: любой</option>${critOpts}`;
 
     status.textContent = `Критериев: ${items.length}`;
-  } catch (e) {
-    status.textContent = e.message;
-  }
+  } catch (e) { status.textContent = e.message; }
 }
 
 function openEditCriterion(id) {
   const cid = Number(id);
   const c = criteriaCache.find(x => Number(x.id) === cid);
-  if (!c) {
-    alert('Критерий не найден (обновите список)');
-    return;
-  }
+  if (!c) { alert('Критерий не найден (обновите список)'); return; }
 
   modal('Редактировать критерий', `
     <div style="display:flex;flex-direction:column;gap:10px">
@@ -245,10 +224,7 @@ function openEditCriterion(id) {
   qs('#ecMax').value = String(c.max_score ?? '');
   qs('#ecActive').checked = !!c.active;
 
-  const updateCount = (el, out, max) => {
-    const len = (el.value || '').length;
-    out.textContent = `${len}/${max}`;
-  };
+  const updateCount = (el, out, max) => { out.textContent = `${(el.value || '').length}/${max}`; };
   const nameEl = qs('#ecName');
   const descEl = qs('#ecDesc');
   const nameCount = qs('#ecNameCount');
@@ -262,27 +238,17 @@ function openEditCriterion(id) {
   qs('#ecSave').addEventListener('click', async () => {
     try {
       const name = qs('#ecName').value.trim();
-      if (name.length < 2) { alert('Название критерия должно быть не короче 2 символов'); return; }
-      if (name.length > 120) { alert('Название критерия должно быть не длиннее 120 символов'); return; }
+      if (name.length < 2 || name.length > 120) { alert('Название критерия: 2-120 символов'); return; }
       const description = qs('#ecDesc').value.trim();
-      if (description.length > 500) { alert('Описание должно быть не длиннее 500 символов'); return; }
-      let maxScore = parseFloat(qs('#ecMax').value || '10');
-      if (!Number.isFinite(maxScore)) { alert('Макс. балл должен быть числом'); return; }
-      if (maxScore < 0) { alert('Макс. балл должен быть >= 0'); return; }
+      if (description.length > 500) { alert('Описание до 500 символов'); return; }
+      const maxScore = Number(qs('#ecMax').value || '10');
+      if (!Number.isFinite(maxScore) || maxScore < 0) { alert('Макс. балл должен быть числом >= 0'); return; }
 
-      await patchCriterion(cid, {
-        name,
-        description,
-        max_score: maxScore,
-        active: qs('#ecActive').checked
-      });
-
+      await patchCriterion(cid, { name, description, max_score: maxScore, active: qs('#ecActive').checked });
       closeModal('adminModal');
       await loadCriteria();
       await loadEvals();
-    } catch (e) {
-      alert(e.message);
-    }
+    } catch (e) { alert(e.message); }
   });
 }
 
@@ -316,25 +282,21 @@ async function patchCriterion(id, patch) {
   try {
     if (patch.name !== undefined) {
       const n = String(patch.name).trim();
-      if (n.length < 2) { alert('Название критерия должно быть не короче 2 символов'); return; }
-      if (n.length > 120) { alert('Название критерия должно быть не длиннее 120 символов'); return; }
+      if (n.length < 2 || n.length > 120) { alert('Название: 2-120 символов'); return; }
       patch.name = n;
     }
     if (patch.description !== undefined && patch.description !== null) {
       const d = String(patch.description).trim();
-      if (d.length > 500) { alert('Описание должно быть не длиннее 500 символов'); return; }
+      if (d.length > 500) { alert('Описание до 500 символов'); return; }
       patch.description = d;
     }
     if (patch.max_score !== undefined) {
       const ms = Number(patch.max_score);
-      if (!Number.isFinite(ms)) { alert('Макс. балл должен быть числом'); return; }
-      if (ms < 0) { alert('Макс. балл должен быть >= 0'); return; }
+      if (!Number.isFinite(ms) || ms < 0) { alert('Макс. балл должен быть числом >= 0'); return; }
       patch.max_score = ms;
     }
     await adminReq(`/api/admin/criteria/${id}`, { method: 'PATCH', body: patch });
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 }
 
 async function deleteCriterion(id) {
@@ -343,9 +305,7 @@ async function deleteCriterion(id) {
     await adminReq(`/api/admin/criteria/${id}`, { method: 'DELETE' });
     await loadCriteria();
     await loadEvals();
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 }
 
 async function purgeAllEvaluations() {
@@ -356,38 +316,28 @@ async function purgeAllEvaluations() {
     const res = await adminReq('/api/admin/evaluations', { method: 'DELETE' });
     status.textContent = `Удалено: оценок ${res.scores_deleted ?? 0}, оцениваний ${res.evaluations_deleted ?? 0}`;
     await loadEvals();
-    await loadResultsAfterPurge();
-  } catch (e) {
-    status.textContent = e.message;
-  }
+  } catch (e) { status.textContent = e.message; }
 }
 
-// optional: keep UI consistent by reloading criteria/users selects after purge
-async function loadResultsAfterPurge() {
-  // refresh selects + cached lists that depend on evaluations
-  try {
-    await loadUsers();
-    await loadCriteria();
-  } catch {
-    // ignore
-  }
+function buildEvalQueryString() {
+  const params = new URLSearchParams();
+  const target_id = parseInputId(qs('#eTarget').value);
+  const rater_id = parseInputId(qs('#eRater').value);
+  const criterion_id = qs('#eCrit').value;
+  const anomaly_only = qs('#eAnom').checked;
+  if (target_id !== null) params.set('target_id', String(target_id));
+  if (rater_id !== null) params.set('rater_id', String(rater_id));
+  if (criterion_id) params.set('criterion_id', criterion_id);
+  if (anomaly_only) params.set('anomaly_only', 'true');
+  return params.toString();
 }
 
 async function loadEvals() {
   const status = qs('#eStatus');
   status.textContent = '...';
   try {
-    const params = new URLSearchParams();
-    const target_id = qs('#eTarget').value;
-    const rater_id = qs('#eRater').value;
-    const criterion_id = qs('#eCrit').value;
-    const anomaly_only = qs('#eAnom').checked;
-    if (target_id) params.set('target_id', target_id);
-    if (rater_id) params.set('rater_id', rater_id);
-    if (criterion_id) params.set('criterion_id', criterion_id);
-    if (anomaly_only) params.set('anomaly_only', 'true');
-
-    const res = await adminReq(`/api/admin/evaluations?${params.toString()}`);
+    const qsParams = buildEvalQueryString();
+    const res = await adminReq(`/api/admin/evaluations?${qsParams}`);
     const items = res.items || [];
 
     qs('#eBody').innerHTML = items.map(it => {
@@ -406,12 +356,8 @@ async function loadEvals() {
           <td class="muted">${it.mean === null || it.mean === undefined ? '' : Number(it.mean).toFixed(2)}</td>
           <td class="muted">${escapeHtml(delta)}</td>
           <td class="muted">${escapeHtml(z)}</td>
-          <td>
-            <span class="inline" data-eid="${it.evaluation_id}">${escapeHtml(it.comment || '')}</span>
-          </td>
-          <td>
-            <button class="btn danger" data-sdel="${it.score_id}">Удалить балл</button>
-          </td>
+          <td><span class="inline" data-eid="${it.evaluation_id}">${escapeHtml(it.comment || '')}</span></td>
+          <td><button class="btn danger" data-sdel="${it.score_id}">Удалить балл</button></td>
         </tr>
       `;
     }).join('') || `<tr><td colspan="9" class="muted">Нет данных</td></tr>`;
@@ -421,9 +367,7 @@ async function loadEvals() {
     qsa('button[data-sdel]').forEach(btn => btn.addEventListener('click', () => deleteScore(btn.dataset.sdel)));
 
     status.textContent = `Строк: ${items.length}`;
-  } catch (e) {
-    status.textContent = e.message;
-  }
+  } catch (e) { status.textContent = e.message; }
 }
 
 function startInlineScore(span) {
@@ -433,20 +377,15 @@ function startInlineScore(span) {
   span.innerHTML = `<input type="number" step="0.5" style="width:110px" value="${escapeHtml(old)}" />`;
   const inp = span.querySelector('input');
   inp.focus();
-  inp.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') inp.blur();
-    if (ev.key === 'Escape') { span.textContent = old; span.classList.remove('editing'); }
-  });
+  inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') inp.blur(); if (ev.key === 'Escape') { span.textContent = old; span.classList.remove('editing'); } });
   inp.addEventListener('blur', async () => {
     const v = parseFloat(inp.value);
     span.classList.remove('editing');
-    span.textContent = isNaN(v) ? old : v.toFixed(2);
+    span.textContent = Number.isFinite(v) ? v.toFixed(2) : old;
     try {
       await adminReq(`/api/admin/evaluation-scores/${sid}`, { method: 'PATCH', body: { score: v } });
       await loadEvals();
-    } catch (e) {
-      alert(e.message);
-    }
+    } catch (e) { alert(e.message); }
   });
 }
 
@@ -457,19 +396,13 @@ function startInlineComment(span) {
   span.innerHTML = `<input style="width:100%" value="${escapeHtml(old)}" />`;
   const inp = span.querySelector('input');
   inp.focus();
-  inp.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') inp.blur();
-    if (ev.key === 'Escape') { span.textContent = old; span.classList.remove('editing'); }
-  });
+  inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') inp.blur(); if (ev.key === 'Escape') { span.textContent = old; span.classList.remove('editing'); } });
   inp.addEventListener('blur', async () => {
     const val = inp.value.trim();
     span.classList.remove('editing');
     span.textContent = val;
-    try {
-      await adminReq(`/api/admin/evaluations/${eid}`, { method: 'PATCH', body: { comment: val } });
-    } catch (e) {
-      alert(e.message);
-    }
+    try { await adminReq(`/api/admin/evaluations/${eid}`, { method: 'PATCH', body: { comment: val } }); }
+    catch (e) { alert(e.message); }
   });
 }
 
@@ -478,9 +411,7 @@ async function deleteScore(sid) {
   try {
     await adminReq(`/api/admin/evaluation-scores/${sid}`, { method: 'DELETE' });
     await loadEvals();
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 }
 
 async function loadAudit() {
@@ -501,15 +432,47 @@ async function loadAudit() {
       </tr>
     `).join('') || `<tr><td colspan="7" class="muted">Нет логов</td></tr>`;
     status.textContent = `Логов: ${items.length}`;
-  } catch (e) {
-    status.textContent = e.message;
-  }
+  } catch (e) { status.textContent = e.message; }
+}
+
+async function triggerDownload(url, filename) {
+  const res = await fetch(url, { headers: { Authorization: `Basic ${getBasic()}` } });
+  if (!res.ok) { throw new Error('Не удалось скачать файл'); }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+async function exportEvalsCsv() {
+  try {
+    const qsParams = buildEvalQueryString();
+    await triggerDownload(`/api/admin/evaluations/export/csv?${qsParams}`, 'evaluations.csv');
+  } catch (e) { alert(e.message); }
+}
+
+async function exportEvalsXlsx() {
+  try {
+    const qsParams = buildEvalQueryString();
+    await triggerDownload(`/api/admin/evaluations/export/xlsx?${qsParams}`, 'evaluations.xlsx');
+  } catch (e) { alert(e.message); }
 }
 
 function bindUi() {
-  bindModalClose();
+  const navToggle = qs('#navToggle');
+  const nav = document.querySelector('.nav');
+  if (navToggle && nav) {
+    navToggle.addEventListener('click', () => nav.classList.toggle('open'));
+    nav.querySelectorAll('a,button').forEach(el => el.addEventListener('click', () => nav.classList.remove('open')));
+  }
 
+  bindModalClose();
   setupNoAutofill(qs('#uGroup'));
+  setupNoAutofill(qs('#eTarget'));
+  setupNoAutofill(qs('#eRater'));
 
   qs('#aEnter').addEventListener('click', async () => {
     const login = qs('#aLogin').value.trim();
@@ -518,7 +481,6 @@ function bindUi() {
     status.textContent = '...';
     try {
       setBasic(b64(login, pass));
-      // probe
       await adminReq('/api/admin/users');
       qs('#adminAuthPanel').style.display = 'none';
       qs('#adminApp').style.display = '';
@@ -532,10 +494,7 @@ function bindUi() {
     }
   });
 
-  qs('#aLogout').addEventListener('click', () => {
-    clearBasic();
-    location.reload();
-  });
+  qs('#aLogout').addEventListener('click', () => { clearBasic(); location.reload(); });
 
   qsa('button[data-atab]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -548,12 +507,21 @@ function bindUi() {
     });
   });
 
-  qs('#uReload').addEventListener('click', loadUsers);
-  qs('#cReload').addEventListener('click', loadCriteria);
-  qs('#eReload').addEventListener('click', loadEvals);
-  qs('#lReload').addEventListener('click', loadAudit);
+  qs('#uReload')?.addEventListener('click', loadUsers);
+  qs('#cReload')?.addEventListener('click', loadCriteria);
+  qs('#eReload')?.addEventListener('click', loadEvals);
+  qs('#lReload')?.addEventListener('click', loadAudit);
+
+  qs('#uQ').addEventListener('input', debounce(loadUsers, 300));
+  qs('#uGroup').addEventListener('input', debounce(loadUsers, 300));
+  qs('#eTarget').addEventListener('input', debounce(loadEvals, 300));
+  qs('#eRater').addEventListener('input', debounce(loadEvals, 300));
+  qs('#eCrit').addEventListener('change', loadEvals);
+  qs('#eAnom').addEventListener('change', loadEvals);
 
   qs('#ePurgeAll').addEventListener('click', purgeAllEvaluations);
+  qs('#eExportCsv').addEventListener('click', exportEvalsCsv);
+  qs('#eExportXlsx').addEventListener('click', exportEvalsXlsx);
 
   qs('#uAdd').addEventListener('click', () => {
     modal('Добавить пользователя', `
@@ -571,7 +539,15 @@ function bindUi() {
     `);
     qs('#nuCreate').addEventListener('click', async () => {
       try {
-        await adminReq('/api/admin/users', { method: 'POST', body: { nickname: qs('#nuNick').value.trim(), full_name: qs('#nuFull').value.trim(), group: qs('#nuGroup').value.trim(), password: qs('#nuPass').value } });
+        await adminReq('/api/admin/users', {
+          method: 'POST',
+          body: {
+            nickname: qs('#nuNick').value.trim(),
+            full_name: qs('#nuFull').value.trim(),
+            group: qs('#nuGroup').value.trim(),
+            password: qs('#nuPass').value,
+          },
+        });
         closeModal('adminModal');
         await loadUsers();
       } catch (e) { alert(e.message); }
@@ -610,10 +586,7 @@ function bindUi() {
       </div>
     `);
 
-    const updateCount = (el, out, max) => {
-      const len = (el.value || '').length;
-      out.textContent = `${len}/${max}`;
-    };
+    const updateCount = (el, out, max) => { out.textContent = `${(el.value || '').length}/${max}`; };
     const nameEl = qs('#ncName');
     const descEl = qs('#ncDesc');
     const nameCount = qs('#ncNameCount');
@@ -627,37 +600,14 @@ function bindUi() {
     qs('#ncCreate').addEventListener('click', async () => {
       try {
         const name = qs('#ncName').value.trim();
-        if (name.length < 2) {
-          alert('Название критерия должно быть не короче 2 символов');
-          return;
-        }
-        if (name.length > 120) {
-          alert('Название критерия должно быть не длиннее 120 символов');
-          return;
-        }
-
+        if (name.length < 2 || name.length > 120) { alert('Название критерия должно быть 2-120 символов'); return; }
         const description = qs('#ncDesc').value.trim();
-        if (description.length > 500) {
-          alert('Описание должно быть не длиннее 500 символов');
-          return;
-        }
-
+        if (description.length > 500) { alert('Описание до 500 символов'); return; }
         let maxScore = parseFloat(qs('#ncMax').value || '10');
         if (!Number.isFinite(maxScore)) maxScore = 10;
-        if (maxScore < 0) {
-          alert('Макс. балл должен быть >= 0');
-          return;
-        }
+        if (maxScore < 0) { alert('Макс. балл должен быть >= 0'); return; }
 
-        await adminReq('/api/admin/criteria', {
-          method: 'POST',
-          body: {
-            name,
-            description,
-            max_score: maxScore,
-            active: qs('#ncActive').checked
-          }
-        });
+        await adminReq('/api/admin/criteria', { method: 'POST', body: { name, description, max_score: maxScore, active: qs('#ncActive').checked } });
         closeModal('adminModal');
         await loadCriteria();
       } catch (e) { alert(e.message); }
@@ -668,7 +618,6 @@ function bindUi() {
 function tryRestoreSession() {
   const b = getBasic();
   if (!b) return;
-  // don't auto-probe silently; show app immediately and allow reload buttons
   qs('#adminAuthPanel').style.display = 'none';
   qs('#adminApp').style.display = '';
   loadUsers();

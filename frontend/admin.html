@@ -12,6 +12,10 @@
       <div>
         <div class="brand">Администратор · Платформа оценивания студентов</div>
       </div>
+      <button class="nav-toggle" id="navToggle" aria-label="Меню">
+        <span class="bar"></span>
+        <span>Меню</span>
+      </button>
       <div class="nav">
         <a class="tabbtn" href="/login.html">Вход пользователя</a>
       </div>
@@ -75,11 +79,14 @@
       <!-- Evals -->
       <div id="a-evals" style="margin-top:12px; display:none;">
         <div class="row">
-          <select id="eTarget" style="width:260px"><option value="">Оцениваемый: любой</option></select>
-          <select id="eRater" style="width:260px"><option value="">Оценивающий: любой</option></select>
-          <select id="eCrit" style="width:260px"><option value="">Критерий: любой</option></select>
+          <input id="eTarget" list="eTargetList" placeholder="Оцениваемый (поиск по ФИО/ниу)" style="width:260px" />
+          <datalist id="eTargetList"></datalist>
+          <input id="eRater" list="eRaterList" placeholder="Оценивающий (поиск)" style="width:260px" />
+          <datalist id="eRaterList"></datalist>
+          <select id="eCrit" style="width:220px"><option value="">Критерий: любой</option></select>
           <label class="muted"><input id="eAnom" type="checkbox" /> только аномалии</label>
-          <button class="btn" id="eReload">Обновить</button>
+          <button class="btn" id="eExportCsv">Экспорт CSV</button>
+          <button class="btn" id="eExportXlsx">Экспорт Excel</button>
           <button class="btn danger" id="ePurgeAll">Удалить все оценки</button>
           <span class="muted" id="eStatus"></span>
         </div>
