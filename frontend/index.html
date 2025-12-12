@@ -93,6 +93,20 @@
       </div>
 
       <div style="margin-top:20px;" class="panel">
+        <h4 class="panel-title" style="margin-bottom:12px">Редактирование профиля</h4>
+        <div class="row" style="margin-bottom:10px;">
+          <input id="editFull" placeholder="ФИО" style="flex:1;min-width:180px" />
+          <input id="editGroup" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <input id="editNick" placeholder="Никнейм" style="width:180px" autocomplete="username" />
+        </div>
+        <div class="row" style="margin-top:8px;align-items:center;gap:12px;">
+          <button class="btn primary" id="saveProfile" style="width:200px">Сохранить изменения</button>
+          <span id="profileStatus" class="muted"></span>
+        </div>
+        <div class="text-secondary" style="margin-top:8px;font-size:13px;">При смене никнейма токен обновится автоматически.</div>
+      </div>
+
+      <div style="margin-top:20px;" class="panel">
         <h4 class="panel-title" style="margin-bottom:12px">Смена пароля</h4>
         <div class="row">
           <input id="oldPass" type="password" placeholder="Старый пароль" style="flex:1;min-width:180px" autocomplete="current-password" />

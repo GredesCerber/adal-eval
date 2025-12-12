@@ -23,6 +23,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UserSelfUpdate(BaseModel):
+    full_name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    group: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    nickname: Optional[str] = Field(default=None, min_length=3, max_length=64)
+
+
 class UserPublic(BaseModel):
     id: int
     nickname: str

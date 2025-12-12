@@ -21,8 +21,9 @@ from ..schemas import (
     EvaluationPublic,
     ResultsRow,
     UserPublic,
+    UserSelfUpdate,
 )
-from ..security import hash_password, verify_password
+from ..security import create_access_token, hash_password, verify_password
 from ..services import clamp_score, evaluation_to_dict, get_stats_for_target
 
 
@@ -63,6 +64,18 @@ def _compute_results(
         .all()
     )
 
+    total_scores: dict[int, list[float]] = defaultdict(list)
+    totals_rows = (
+        db.query(Evaluation.target_id, func.sum(EvaluationScore.score))
+        .join(EvaluationScore, EvaluationScore.evaluation_id == Evaluation.id)
+        .join(Criterion, Criterion.id == EvaluationScore.criterion_id)
+        .filter(Evaluation.target_id.in_(user_ids), Criterion.active.is_(True))
+        .group_by(Evaluation.id, Evaluation.target_id)
+        .all()
+    )
+    for target_id, total in totals_rows:
+        total_scores[int(target_id)].append(float(total))
+
     agg: dict[int, dict[int, float]] = defaultdict(dict)
     for target_id, criterion_id, avg_score in rows:
         agg[int(target_id)][int(criterion_id)] = float(avg_score) if avg_score is not None else None
@@ -93,13 +106,16 @@ def _compute_results(
             if abs(z) >= settings.anomaly_zscore:
                 anomaly_count += 1
 
+        totals_list = total_scores.get(u.id, [])
+        overall_total = (sum(totals_list) / len(totals_list)) if totals_list else None
+
         out.append(
             ResultsRow(
                 student_id=u.id,
                 student_full_name=u.full_name,
                 group=u.group,
                 criteria=crit_map,
-                overall_mean=(sum(values) / len(values)) if values else None,
+                overall_mean=overall_total,
                 anomaly_count=anomaly_count,
             )
         )
@@ -134,6 +150,64 @@ def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db
     db.add(current)
     db.commit()
     return {"ok": True}
+
+
+@router.patch("/me", response_model=dict)
+def update_me(payload: UserSelfUpdate, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    changed = False
+
+    if payload.nickname is not None:
+        new_nick = payload.nickname.strip()
+        if not new_nick:
+            raise HTTPException(status_code=400, detail="Никнейм не может быть пустым")
+        other = db.query(User).filter(User.nickname == new_nick, User.id != current.id).first()
+        if other:
+            raise HTTPException(status_code=400, detail="Никнейм уже занят")
+        current.nickname = new_nick
+        changed = True
+
+    if payload.full_name is not None:
+        new_full = payload.full_name.strip()
+        if not new_full:
+            raise HTTPException(status_code=400, detail="ФИО не может быть пустым")
+        current.full_name = new_full
+        changed = True
+
+    if payload.group is not None:
+        new_group = payload.group.strip()
+        if not new_group:
+            raise HTTPException(status_code=400, detail="Группа не может быть пустой")
+        current.group = new_group
+        changed = True
+
+    if not changed:
+        return {
+            "user": UserPublic(
+                id=current.id,
+                nickname=current.nickname,
+                full_name=current.full_name,
+                group=current.group,
+                created_at=current.created_at,
+            )
+        }
+
+    db.add(current)
+    db.commit()
+    db.refresh(current)
+
+    new_token = create_access_token(subject=current.nickname)
+
+    return {
+        "user": UserPublic(
+            id=current.id,
+            nickname=current.nickname,
+            full_name=current.full_name,
+            group=current.group,
+            created_at=current.created_at,
+        ),
+        "access_token": new_token,
+        "token_type": "bearer",
+    }
 
 
 @router.get("/criteria", response_model=list[CriterionPublic])

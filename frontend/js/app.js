@@ -1,4 +1,4 @@
-import { api, clearToken, fmtDate, openModal, closeModal, qs, qsa, escapeHtml, initCommon, toast } from '/js/common.js';
+import { api, clearToken, fmtDate, openModal, closeModal, qs, qsa, escapeHtml, initCommon, toast, setToken } from '/js/common.js';
 
 // Initialize theme, nav toggle, etc.
 initCommon();
@@ -45,6 +45,9 @@ async function loadMe() {
   qs('#pGroup').textContent = me.group;
   qs('#pNick').textContent = me.nickname;
   qs('#pCreated').textContent = fmtDate(me.created_at);
+  if (qs('#editFull')) qs('#editFull').value = me.full_name;
+  if (qs('#editGroup')) qs('#editGroup').value = me.group;
+  if (qs('#editNick')) qs('#editNick').value = me.nickname;
 }
 
 async function loadCriteria() {
@@ -286,7 +289,7 @@ async function loadResults() {
         <th>Студент</th>
         <th>Группа</th>
         ${criteriaKeys.map(k => `<th>${escapeHtml(k)}</th>`).join('')}
-        <th>Среднее</th>
+        <th>Средний ИТОГО</th>
         <th>Детали</th>
       </tr>
     `;
@@ -333,6 +336,46 @@ async function changePassword() {
   }
 }
 
+async function updateProfile() {
+  const status = qs('#profileStatus');
+  if (status) status.textContent = 'Сохранение...';
+  try {
+    const full_name = (qs('#editFull')?.value || '').trim();
+    const group = (qs('#editGroup')?.value || '').trim();
+    const nickname = (qs('#editNick')?.value || '').trim();
+
+    const body = {};
+    if (full_name && full_name !== me.full_name) body.full_name = full_name;
+    if (group && group !== me.group) body.group = group;
+    if (nickname && nickname !== me.nickname) body.nickname = nickname;
+
+    if (!Object.keys(body).length) {
+      if (status) status.textContent = 'Без изменений';
+      return;
+    }
+
+    const res = await api('/api/me', { method: 'PATCH', body });
+    if (res.access_token) setToken(res.access_token);
+    if (res.user) {
+      me = res.user;
+      qs('#meLine').textContent = `${me.full_name} · ${me.group} · @${me.nickname}`;
+      qs('#pFull').textContent = me.full_name;
+      qs('#pGroup').textContent = me.group;
+      qs('#pNick').textContent = me.nickname;
+      qs('#pCreated').textContent = fmtDate(me.created_at);
+      if (qs('#editFull')) qs('#editFull').value = me.full_name;
+      if (qs('#editGroup')) qs('#editGroup').value = me.group;
+      if (qs('#editNick')) qs('#editNick').value = me.nickname;
+    }
+
+    if (status) status.textContent = 'Сохранено';
+    toast('Профиль обновлён', 'success');
+  } catch (e) {
+    if (status) status.textContent = e.message;
+    toast(e.message, 'error');
+  }
+}
+
 function bindUi() {
   // Close mobile nav when clicking nav items
   const nav = document.querySelector('.nav');
@@ -360,6 +403,8 @@ function bindUi() {
   qs('#resultsGroup').addEventListener('input', debounce(loadResults, 300));
   qs('#resultsSort').addEventListener('change', loadResults);
   qs('#resultsOrder').addEventListener('change', loadResults);
+  const saveProfileBtn = qs('#saveProfile');
+  if (saveProfileBtn) saveProfileBtn.addEventListener('click', updateProfile);
 
   qs('#mClose').addEventListener('click', () => closeModal('studentModal'));
   qs('#mSubmit').addEventListener('click', submitEvaluation);
