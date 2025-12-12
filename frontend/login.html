@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Вход</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">Платформа оценивания студентов</div>
+      <div class="nav">
+        <a class="tabbtn" href="/register.html">Регистрация</a>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px; max-width:520px;">
+      <h2 style="margin:0 0 10px 0;">Вход</h2>
+      <div class="muted" style="margin-bottom:12px;">Введите никнейм и пароль</div>
+
+      <form id="form">
+        <div class="row">
+          <input id="nickname" placeholder="Никнейм" autocomplete="username" style="flex:1" required />
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <input id="password" type="password" placeholder="Пароль" autocomplete="current-password" style="flex:1" required />
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary" type="submit">Войти</button>
+          <a class="btn ghost" href="/admin.html">Админ-панель</a>
+          <div class="spacer"></div>
+          <span id="status" class="muted"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, setToken, qs } from '/js/common.js';
+
+    const form = qs('#form');
+    const status = qs('#status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.textContent = '...';
+      try {
+        const nickname = qs('#nickname').value.trim();
+        const password = qs('#password').value;
+        const res = await api('/api/auth/login', { method: 'POST', body: { nickname, password }, auth: 'none' });
+        setToken(res.access_token);
+        location.href = '/index.html';
+      } catch (err) {
+        status.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

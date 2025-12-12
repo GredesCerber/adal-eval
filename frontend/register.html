@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Регистрация</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">Платформа оценивания студентов</div>
+      <div class="nav">
+        <a class="tabbtn" href="/login.html">Вход</a>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px; max-width:640px;">
+      <h2 style="margin:0 0 10px 0;">Регистрация</h2>
+      <div class="muted" style="margin-bottom:12px;">ФИО, группа, никнейм, пароль</div>
+
+      <form id="form" autocomplete="off">
+        <div class="row">
+          <input id="full_name" placeholder="ФИО" style="flex:1" required />
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <input id="group" name="group_register" placeholder="Группа" style="flex:1" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+          <input id="nickname" name="nickname" placeholder="Никнейм" style="flex:1" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <input id="password" type="password" name="password" placeholder="Пароль (мин 6 символов)" style="flex:1" autocomplete="new-password" required />
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary" type="submit">Создать аккаунт</button>
+          <div class="spacer"></div>
+          <span id="status" class="muted"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, setToken, qs } from '/js/common.js';
+
+    const form = qs('#form');
+    const status = qs('#status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.textContent = '...';
+      try {
+        const full_name = qs('#full_name').value.trim();
+        const group = qs('#group').value.trim();
+        const nickname = qs('#nickname').value.trim();
+        const password = qs('#password').value;
+
+        await api('/api/auth/register', { method: 'POST', body: { full_name, group, nickname, password }, auth: 'none' });
+        const res = await api('/api/auth/login', { method: 'POST', body: { nickname, password }, auth: 'none' });
+        setToken(res.access_token);
+        location.href = '/index.html';
+      } catch (err) {
+        status.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>
