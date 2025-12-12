@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -32,10 +32,10 @@ class UserPublic(BaseModel):
 
 
 class UserAdminUpdate(BaseModel):
-    nickname: str | None = Field(default=None, min_length=3, max_length=64)
-    full_name: str | None = Field(default=None, min_length=2, max_length=200)
-    group: str | None = Field(default=None, min_length=1, max_length=64)
-    is_active: bool | None = None
+    nickname: Optional[str] = Field(default=None, min_length=3, max_length=64)
+    full_name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    group: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    is_active: Optional[bool] = None
 
 
 class UserAdminCreate(BaseModel):
@@ -66,10 +66,10 @@ class CriterionCreate(BaseModel):
 
 
 class CriterionUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=2, max_length=120)
-    description: str | None = Field(default=None, max_length=500)
-    max_score: float | None = Field(default=None, ge=0)
-    active: bool | None = None
+    name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=500)
+    max_score: Optional[float] = Field(default=None, ge=0)
+    active: Optional[bool] = None
 
 
 class ScoreInput(BaseModel):
@@ -88,10 +88,10 @@ class EvaluationScorePublic(BaseModel):
     criterion_name: str
     max_score: float
     score: float
-    mean: float | None = None
-    stdev: float | None = None
-    z: float | None = None
-    delta: float | None = None
+    mean: Optional[float] = None
+    stdev: Optional[float] = None
+    z: Optional[float] = None
+    delta: Optional[float] = None
     is_anomaly: bool = False
 
 
@@ -108,8 +108,8 @@ class ResultsRow(BaseModel):
     student_id: int
     student_full_name: str
     group: str
-    criteria: dict[str, float | None]
-    overall_mean: float | None
+    criteria: dict[str, Optional[float]]
+    overall_mean: Optional[float]
     anomaly_count: int
 
 
@@ -118,16 +118,16 @@ class AdminScorePatch(BaseModel):
 
 
 class AdminEvaluationPatch(BaseModel):
-    comment: str | None = Field(default=None, max_length=2000)
+    comment: Optional[str] = Field(default=None, max_length=2000)
 
 
 class AuditLogRow(BaseModel):
     id: int
     actor_type: str
-    actor_user_id: int | None
+    actor_user_id: Optional[int]
     action: str
     entity_type: str
-    entity_id: int | None
+    entity_id: Optional[int]
     before_json: str
     after_json: str
     created_at: dt.datetime
