@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'sep.jwt';
+const THEME_KEY = 'sep.theme';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
@@ -98,4 +99,110 @@ export function escapeHtml(s) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+/* ========== Theme management ========== */
+export function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'dark' || saved === 'light') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+}
+
+export function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let next;
+  
+  if (current === 'dark') {
+    next = 'light';
+  } else if (current === 'light') {
+    next = 'dark';
+  } else {
+    next = prefersDark ? 'light' : 'dark';
+  }
+  
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem(THEME_KEY, next);
+  return next;
+}
+
+export function getTheme() {
+  return document.documentElement.getAttribute('data-theme') || 
+         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
+
+/* ========== Toast notifications ========== */
+let toastContainer = null;
+
+function ensureToastContainer() {
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container';
+    document.body.appendChild(toastContainer);
+  }
+  return toastContainer;
+}
+
+export function toast(message, type = 'info', duration = 4000) {
+  const container = ensureToastContainer();
+  
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  
+  const icons = {
+    success: '✓',
+    error: '✕',
+    warn: '⚠',
+    info: 'ℹ'
+  };
+  
+  el.innerHTML = `
+    <span style="font-size:18px">${icons[type] || icons.info}</span>
+    <span>${escapeHtml(message)}</span>
+    <button class="toast-close" aria-label="Закрыть">×</button>
+  `;
+  
+  const close = () => {
+    el.style.animation = 'fadeIn .2s ease reverse';
+    setTimeout(() => el.remove(), 200);
+  };
+  
+  el.querySelector('.toast-close').onclick = close;
+  container.appendChild(el);
+  
+  if (duration > 0) {
+    setTimeout(close, duration);
+  }
+  
+  return el;
+}
+
+/* ========== Mobile nav toggle ========== */
+export function initNavToggle() {
+  const toggle = qs('.nav-toggle');
+  const nav = qs('.nav');
+  if (toggle && nav) {
+    toggle.addEventListener('click', () => {
+      nav.classList.toggle('open');
+    });
+  }
+}
+
+/* ========== Init common ========== */
+export function initCommon() {
+  initTheme();
+  initNavToggle();
+  
+  // Theme toggle button
+  const themeBtn = qs('.theme-toggle');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const next = toggleTheme();
+      themeBtn.innerHTML = next === 'dark' ? '☀️' : '🌙';
+    });
+    // Set initial icon
+    const current = getTheme();
+    themeBtn.innerHTML = current === 'dark' ? '☀️' : '🌙';
+  }
 }

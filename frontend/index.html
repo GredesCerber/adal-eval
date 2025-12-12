@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#161b22" />
   <title>Оценивание студентов</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
@@ -10,36 +11,36 @@
   <div class="container">
     <div class="header">
       <div>
-        <div class="brand">Платформа оценивания студентов</div>
-        <div class="muted" id="meLine" style="margin-top:4px"></div>
+        <div class="brand">📚 Платформа оценивания</div>
+        <div class="text-secondary" id="meLine" style="margin-top:4px;font-size:13px"></div>
       </div>
       <button class="nav-toggle" id="navToggle" aria-label="Меню">
         <span class="bar"></span>
         <span>Меню</span>
       </button>
       <div class="nav">
-        <button class="tabbtn active" data-tab="eval">Оценивание</button>
-        <button class="tabbtn" data-tab="results">Итоги</button>
-        <button class="tabbtn" data-tab="profile">Профиль</button>
-        <a class="tabbtn" href="/admin.html">Админ</a>
-        <button class="tabbtn" id="logout">Выход</button>
+        <button class="tabbtn active" data-tab="eval">📋 Оценивание</button>
+        <button class="tabbtn" data-tab="results">📊 Итоги</button>
+        <button class="tabbtn" data-tab="profile">👤 Профиль</button>
+        <button class="theme-toggle" aria-label="Переключить тему">🌙</button>
+        <button class="tabbtn danger" id="logout">Выход</button>
       </div>
     </div>
 
-    <div id="tab-eval" class="panel" style="margin-top:14px;">
-      <div class="row">
-        <input id="studentQ" placeholder="Поиск (ФИО/никнейм)" style="flex:1" />
+    <div id="tab-eval" class="panel" style="margin-top:16px;">
+      <div class="row" style="margin-bottom:16px;">
+        <input id="studentQ" placeholder="🔍 Поиск (ФИО/никнейм)" style="flex:1;min-width:200px" />
         <input id="studentGroup" name="group_filter_eval" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" readonly />
-        <button class="btn" id="reloadStudents">Обновить</button>
+        <button class="btn primary" id="reloadStudents">↻ Обновить</button>
         <span id="evalStatus" class="muted"></span>
       </div>
-      <div class="tablewrap" style="margin-top:12px;">
+      <div class="tablewrap">
         <table>
           <thead>
             <tr>
               <th>Студент</th>
               <th>Группа</th>
-              <th>Действия</th>
+              <th style="width:140px">Действия</th>
             </tr>
           </thead>
           <tbody id="studentsBody"></tbody>
@@ -47,9 +48,9 @@
       </div>
     </div>
 
-    <div id="tab-results" class="panel" style="margin-top:14px; display:none;">
-      <div class="row">
-        <input id="resultsQ" placeholder="Поиск (ФИО/никнейм)" style="flex:1" />
+    <div id="tab-results" class="panel" style="margin-top:16px; display:none;">
+      <div class="row" style="margin-bottom:16px;">
+        <input id="resultsQ" placeholder="🔍 Поиск (ФИО/никнейм)" style="flex:1;min-width:200px" />
         <input id="resultsGroup" name="group_filter_results" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" readonly />
         <select id="resultsSort" style="width:180px">
           <option value="name">Сортировка: имя</option>
@@ -59,10 +60,10 @@
             <option value="asc">По возрастанию</option>
             <option value="desc">По убыванию</option>
         </select>
-        <button class="btn" id="reloadResults" style="display:none">Обновить</button>
+        <button class="btn" id="reloadResults" style="display:none">↻ Обновить</button>
         <span id="resultsStatus" class="muted"></span>
       </div>
-      <div class="tablewrap" style="margin-top:12px;">
+      <div class="tablewrap">
         <table>
           <thead id="resultsHead"></thead>
           <tbody id="resultsBody"></tbody>
@@ -70,31 +71,33 @@
       </div>
     </div>
 
-    <div id="tab-profile" class="panel" style="margin-top:14px; display:none;">
-      <div class="row">
-        <div>
-          <div class="muted">ФИО</div>
-          <div id="pFull"></div>
+    <div id="tab-profile" class="panel" style="margin-top:16px; display:none;">
+      <h3 class="panel-title" style="margin-bottom:16px">Информация о профиле</h3>
+      <div class="profile-grid">
+        <div class="profile-item">
+          <div class="profile-label">ФИО</div>
+          <div class="profile-value" id="pFull">—</div>
         </div>
-        <div>
-          <div class="muted">Группа</div>
-          <div id="pGroup"></div>
+        <div class="profile-item">
+          <div class="profile-label">Группа</div>
+          <div class="profile-value" id="pGroup">—</div>
         </div>
-        <div>
-          <div class="muted">Никнейм</div>
-          <div id="pNick"></div>
+        <div class="profile-item">
+          <div class="profile-label">Никнейм</div>
+          <div class="profile-value" id="pNick">—</div>
         </div>
-        <div>
-          <div class="muted">Регистрация</div>
-          <div id="pCreated"></div>
+        <div class="profile-item">
+          <div class="profile-label">Регистрация</div>
+          <div class="profile-value" id="pCreated">—</div>
         </div>
       </div>
 
-      <div style="margin-top:14px;" class="panel">
+      <div style="margin-top:20px;" class="panel">
+        <h4 class="panel-title" style="margin-bottom:12px">Смена пароля</h4>
         <div class="row">
-          <input id="oldPass" type="password" placeholder="Старый пароль" style="flex:1" />
-          <input id="newPass" type="password" placeholder="Новый пароль" style="flex:1" />
-          <button class="btn primary" id="changePass">Сменить пароль</button>
+          <input id="oldPass" type="password" placeholder="Старый пароль" style="flex:1;min-width:180px" autocomplete="current-password" />
+          <input id="newPass" type="password" placeholder="Новый пароль" style="flex:1;min-width:180px" autocomplete="new-password" />
+          <button class="btn primary" id="changePass">Сменить</button>
           <span id="passStatus" class="muted"></span>
         </div>
       </div>
@@ -106,19 +109,18 @@
     <div class="modal-card">
       <div class="modal-head">
         <div>
-          <div style="font-weight:700" id="mTitle">Студент</div>
-          <div class="muted" id="mSub"></div>
+          <h2 class="modal-title" id="mTitle">Студент</h2>
+          <div class="modal-subtitle" id="mSub"></div>
         </div>
-        <button class="modal-close" id="mClose">Закрыть</button>
+        <button class="modal-close" id="mClose" aria-label="Закрыть">×</button>
       </div>
 
-      <div class="panel" style="margin-top:10px;">
-        <div class="row">
-          <div class="badge">Оценки</div>
-          <div class="spacer"></div>
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <span class="badge primary">📊 Оценки</span>
           <span class="muted" id="mStatus"></span>
         </div>
-        <div class="tablewrap" style="margin-top:10px;">
+        <div class="tablewrap">
           <table>
             <thead id="mHead"></thead>
             <tbody id="mBody"></tbody>
@@ -126,23 +128,24 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:10px;">
-        <div class="row">
-          <div class="badge" id="mFormTitle">Ваша оценка</div>
-          <div class="spacer"></div>
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <span class="badge success" id="mFormTitle">✏️ Ваша оценка</span>
           <span class="muted" id="mAddStatus"></span>
         </div>
-        <div id="mForm" style="margin-top:10px;"></div>
-        <div class="row" style="margin-top:10px;">
-          <textarea id="mComment" placeholder="Комментарий"></textarea>
+        <div id="mForm" style="margin-top:12px;"></div>
+        <div class="row" style="margin-top:12px;">
+          <textarea id="mComment" placeholder="💬 Комментарий (необязательно)"></textarea>
         </div>
-        <div class="row" style="margin-top:10px;">
-          <button class="btn primary" id="mSubmit">Сохранить оценку</button>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary lg" id="mSubmit" style="flex:1">💾 Сохранить оценку</button>
         </div>
       </div>
     </div>
   </div>
 
   <script type="module" src="/js/app.js"></script>
+</body>
+</html>
 </body>
 </html>

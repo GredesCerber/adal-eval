@@ -1,4 +1,7 @@
-import { api, clearToken, fmtDate, openModal, closeModal, qs, qsa, escapeHtml } from '/js/common.js';
+import { api, clearToken, fmtDate, openModal, closeModal, qs, qsa, escapeHtml, initCommon, toast } from '/js/common.js';
+
+// Initialize theme, nav toggle, etc.
+initCommon();
 
 function debounce(fn, ms = 300) {
   let t;
@@ -50,7 +53,7 @@ async function loadCriteria() {
 
 async function loadStudents() {
   const status = qs('#evalStatus');
-  status.textContent = '...';
+  status.textContent = 'Загрузка...';
   try {
     const q = qs('#studentQ').value.trim();
     const group = qs('#studentGroup').value.trim();
@@ -248,12 +251,14 @@ async function submitEvaluation() {
     const comment = qs('#mComment').value;
     await api(`/api/students/${currentTarget}/evaluate`, { method: 'POST', body: { comment, scores } });
     status.textContent = 'Готово';
+    toast('Оценка сохранена!', 'success');
 
     // refresh modal list and results
     await openStudentModal(currentTarget);
     await loadResults();
   } catch (e) {
     status.textContent = e.message;
+    toast(e.message, 'error');
   }
 }
 
@@ -313,24 +318,25 @@ async function loadResults() {
 
 async function changePassword() {
   const status = qs('#passStatus');
-  status.textContent = '...';
+  status.textContent = 'Сохранение...';
   try {
     const old_password = qs('#oldPass').value;
     const new_password = qs('#newPass').value;
     await api('/api/me/password', { method: 'POST', body: { old_password, new_password } });
-    status.textContent = 'Готово';
+    status.textContent = 'Пароль изменён';
+    toast('Пароль успешно изменён!', 'success');
     qs('#oldPass').value = '';
     qs('#newPass').value = '';
   } catch (e) {
     status.textContent = e.message;
+    toast(e.message, 'error');
   }
 }
 
 function bindUi() {
-  const navToggle = qs('#navToggle');
+  // Close mobile nav when clicking nav items
   const nav = document.querySelector('.nav');
-  if (navToggle && nav) {
-    navToggle.addEventListener('click', () => nav.classList.toggle('open'));
+  if (nav) {
     nav.querySelectorAll('a,button').forEach(el => el.addEventListener('click', () => nav.classList.remove('open')));
   }
 

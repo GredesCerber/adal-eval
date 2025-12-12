@@ -3,68 +3,75 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#161b22" />
   <title>Вход</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
+<body class="auth-page">
   <div class="container">
     <div class="header">
-      <div class="brand">Платформа оценивания студентов</div>
+      <div class="brand">📚 Платформа оценивания</div>
       <button class="nav-toggle" id="navToggle" aria-label="Меню">
         <span class="bar"></span>
         <span>Меню</span>
       </button>
       <div class="nav">
-        <a class="tabbtn" href="/register.html">Регистрация</a>
+        <a class="tabbtn" href="/register.html">📝 Регистрация</a>
+        <button class="theme-toggle" aria-label="Переключить тему">🌙</button>
       </div>
     </div>
 
-    <div class="panel" style="margin-top:14px; max-width:520px;">
-      <h2 style="margin:0 0 10px 0;">Вход</h2>
-      <div class="muted" style="margin-bottom:12px;">Введите никнейм и пароль</div>
+    <div class="panel-wrapper">
+      <div class="panel" style="margin-top:20px; max-width:460px;">
+      <h2 style="margin:0 0 8px 0;">🔑 Вход в систему</h2>
+      <p class="text-secondary" style="margin:0 0 20px 0;">Введите никнейм и пароль</p>
 
       <form id="form">
         <div class="row">
           <input id="nickname" placeholder="Никнейм" autocomplete="username" style="flex:1" required />
         </div>
-        <div class="row" style="margin-top:10px;">
+        <div class="row" style="margin-top:12px;">
           <input id="password" type="password" placeholder="Пароль" autocomplete="current-password" style="flex:1" required />
         </div>
 
+        <div class="row" style="margin-top:16px;">
+          <button class="btn primary lg" type="submit" style="flex:1">Войти</button>
+        </div>
         <div class="row" style="margin-top:12px;">
-          <button class="btn primary" type="submit">Войти</button>
-          <a class="btn ghost" href="/admin.html">Админ-панель</a>
-          <div class="spacer"></div>
+          <a class="btn ghost" href="/admin.html" style="flex:1;text-align:center">⚙️ Админ-панель</a>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
           <span id="status" class="muted"></span>
         </div>
+        <div class="auth-help" style="margin-top:10px;text-align:center;font-size:14px;">
+          Нет аккаунта? <a href="/register.html">Зарегистрироваться</a>
+        </div>
       </form>
+    </div>
     </div>
   </div>
 
   <script type="module">
-    import { api, setToken, qs } from '/js/common.js';
+    import { api, setToken, qs, initCommon, toast } from '/js/common.js';
 
-    const navToggle = document.getElementById('navToggle');
-    const nav = document.querySelector('.nav');
-    if (navToggle && nav) {
-      navToggle.addEventListener('click', () => nav.classList.toggle('open'));
-      nav.querySelectorAll('a,button').forEach(el => el.addEventListener('click', () => nav.classList.remove('open')));
-    }
+    initCommon();
 
     const form = qs('#form');
     const status = qs('#status');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      status.textContent = '...';
+      status.textContent = 'Вход...';
       try {
         const nickname = qs('#nickname').value.trim();
         const password = qs('#password').value;
         const res = await api('/api/auth/login', { method: 'POST', body: { nickname, password }, auth: 'none' });
         setToken(res.access_token);
-        location.href = '/index.html';
+        toast('Успешный вход!', 'success', 2000);
+        setTimeout(() => location.href = '/index.html', 500);
       } catch (err) {
         status.textContent = err.message;
+        toast(err.message, 'error');
       }
     });
   </script>

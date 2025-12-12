@@ -1,4 +1,7 @@
-import { api, qs, qsa, openModal, closeModal, escapeHtml, fmtDate } from '/js/common.js';
+import { api, qs, qsa, openModal, closeModal, escapeHtml, fmtDate, initCommon, toast } from '/js/common.js';
+
+// Initialize theme, nav toggle, etc.
+initCommon();
 
 const BASIC_KEY = 'sep.admin.basic';
 
@@ -478,19 +481,21 @@ function bindUi() {
     const login = qs('#aLogin').value.trim();
     const pass = qs('#aPass').value;
     const status = qs('#aStatus');
-    status.textContent = '...';
+    status.textContent = 'Вход...';
     try {
       setBasic(b64(login, pass));
       await adminReq('/api/admin/users');
       qs('#adminAuthPanel').style.display = 'none';
       qs('#adminApp').style.display = '';
       status.textContent = '';
+      toast('Добро пожаловать, администратор!', 'success');
       await loadUsers();
       await loadCriteria();
       await loadEvals();
     } catch (e) {
       clearBasic();
       status.textContent = e.message;
+      toast(e.message, 'error');
     }
   });
 

@@ -3,52 +3,65 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#161b22" />
   <title>Регистрация</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
+<body class="auth-page">
   <div class="container">
     <div class="header">
-      <div class="brand">Платформа оценивания студентов</div>
+      <div class="brand">📚 Платформа оценивания</div>
+      <button class="nav-toggle" id="navToggle" aria-label="Меню">
+        <span class="bar"></span>
+        <span>Меню</span>
+      </button>
       <div class="nav">
-        <a class="tabbtn" href="/login.html">Вход</a>
+        <a class="tabbtn" href="/login.html">🔑 Вход</a>
+        <button class="theme-toggle" aria-label="Переключить тему">🌙</button>
       </div>
     </div>
 
-    <div class="panel" style="margin-top:14px; max-width:640px;">
-      <h2 style="margin:0 0 10px 0;">Регистрация</h2>
-      <div class="muted" style="margin-bottom:12px;">ФИО, группа, никнейм, пароль</div>
+    <div class="panel-wrapper">
+      <div class="panel" style="margin-top:20px; max-width:520px;">
+      <h2 style="margin:0 0 8px 0;">📝 Регистрация</h2>
+      <p class="text-secondary" style="margin:0 0 20px 0;">Заполните данные для создания аккаунта</p>
 
       <form id="form" autocomplete="off">
         <div class="row">
           <input id="full_name" placeholder="ФИО" style="flex:1" required />
         </div>
-        <div class="row" style="margin-top:10px;">
+        <div class="row" style="margin-top:12px;">
           <input id="group" name="group_register" placeholder="Группа" style="flex:1" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </div>
+        <div class="row" style="margin-top:12px;">
           <input id="nickname" name="nickname" placeholder="Никнейм" style="flex:1" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
         </div>
-        <div class="row" style="margin-top:10px;">
-          <input id="password" type="password" name="password" placeholder="Пароль (мин 6 символов)" style="flex:1" autocomplete="new-password" required />
+        <div class="row" style="margin-top:12px;">
+          <input id="password" type="password" name="password" placeholder="Пароль (мин. 6 символов)" style="flex:1" autocomplete="new-password" minlength="6" required />
         </div>
 
-        <div class="row" style="margin-top:12px;">
-          <button class="btn primary" type="submit">Создать аккаунт</button>
-          <div class="spacer"></div>
+        <div class="row" style="margin-top:16px;">
+          <button class="btn primary lg" type="submit" style="flex:1">Создать аккаунт</button>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
           <span id="status" class="muted"></span>
         </div>
       </form>
+      </div>
     </div>
   </div>
 
   <script type="module">
-    import { api, setToken, qs } from '/js/common.js';
+    import { api, setToken, qs, initCommon, toast } from '/js/common.js';
+
+    initCommon();
 
     const form = qs('#form');
     const status = qs('#status');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      status.textContent = '...';
+      status.textContent = 'Создание аккаунта...';
       try {
         const full_name = qs('#full_name').value.trim();
         const group = qs('#group').value.trim();
@@ -56,11 +69,13 @@
         const password = qs('#password').value;
 
         await api('/api/auth/register', { method: 'POST', body: { full_name, group, nickname, password }, auth: 'none' });
+        toast('Аккаунт создан!', 'success');
         const res = await api('/api/auth/login', { method: 'POST', body: { nickname, password }, auth: 'none' });
         setToken(res.access_token);
-        location.href = '/index.html';
+        setTimeout(() => location.href = '/index.html', 500);
       } catch (err) {
         status.textContent = err.message;
+        toast(err.message, 'error');
       }
     });
   </script>
