@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Платформа оценивания">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0%" stop-color="#2b6cb0"/>
+      <stop offset="100%" stop-color="#5a9bd6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#g)" />
+  <!-- stylized open book -->
+  <g transform="translate(8,14)" fill="#fff" fill-rule="evenodd">
+    <path d="M6 4c3.5-1.6 9-2 18 0v28c-9-2-14.5-1.6-18 0V4z" opacity="0.95"/>
+    <path d="M52 4c-3.5-1.6-9-2-18 0v28c9-2 14.5-1.6 18 0V4z" opacity="0.95" transform="translate(-12,0)"/>
+    <path d="M6 6c6-1 10-1 18 1v1c-8-2-12-2-18-1v-1z" fill-opacity="0.9"/>
+    <path d="M38 6c-6-1-10-1-18 1v1c8-2 12-2 18-1v-1z" fill-opacity="0.9" transform="translate(-12,0)"/>
+  </g>
+</svg>
