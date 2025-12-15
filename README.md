@@ -104,7 +104,7 @@ python scripts/init_db.py
 ```bash
 pm2 start ecosystem.config.js
 pm2 status
-pm2 logs student-eval-api
+pm2 logs adal-eval-api
 ```
 
 Сервис будет доступен по адресу:
