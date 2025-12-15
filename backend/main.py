@@ -9,6 +9,7 @@ from .database import engine
 from .models import Base
 from .routes.admin import router as admin_router
 from .routes.auth import router as auth_router
+from .routes.events import router as events_router, admin_router as events_admin_router
 from .routes.user import router as user_router
 
 
@@ -31,6 +32,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(user_router)
     app.include_router(admin_router)
+    app.include_router(events_router)
+    app.include_router(events_admin_router)
 
     # Tables
     Base.metadata.create_all(bind=engine)

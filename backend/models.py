@@ -1,14 +1,59 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
+def normalize_full_name(name: str) -> str:
+    """Нормализует ФИО: trim, сжатие пробелов, lowercase для сравнения."""
+    if not name:
+        return ""
+    return re.sub(r'\s+', ' ', name.strip()).lower()
+
+
+def normalize_group(group: str) -> str:
+    """Нормализует группу: удаление всех пробелов."""
+    if not group:
+        return ""
+    return re.sub(r'\s+', '', group.strip())
+
+
 class Base(DeclarativeBase):
     pass
+
+
+class Event(Base):
+    """Событие оценивания — основная сущность, к которой привязаны критерии и оценки."""
+    __tablename__ = "events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow())
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow(), onupdate=lambda: dt.datetime.utcnow())
+
+    criteria: Mapped[list["Criterion"]] = relationship(back_populates="event", cascade="all, delete-orphan")
+    evaluations: Mapped[list["Evaluation"]] = relationship(back_populates="event", cascade="all, delete-orphan")
+    participants: Mapped[list["EventParticipant"]] = relationship(back_populates="event", cascade="all, delete-orphan")
+
+
+class EventParticipant(Base):
+    """Прикрепление пользователя к событию."""
+    __tablename__ = "event_participants"
+    __table_args__ = (UniqueConstraint("event_id", "user_id", name="uq_event_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow())
+
+    event: Mapped["Event"] = relationship(back_populates="participants")
+    user: Mapped["User"] = relationship(back_populates="event_participations")
 
 
 class User(Base):
@@ -28,19 +73,24 @@ class User(Base):
     received_evaluations: Mapped[list["Evaluation"]] = relationship(
         back_populates="target", foreign_keys="Evaluation.target_id", cascade="all, delete-orphan"
     )
+    event_participations: Mapped[list["EventParticipant"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Criterion(Base):
     __tablename__ = "criteria"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(120), index=True)
     description: Mapped[str] = mapped_column(String(500), default="")
     max_score: Mapped[float] = mapped_column(Float, default=10.0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow())
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow(), onupdate=lambda: dt.datetime.utcnow())
 
+    event: Mapped[Optional["Event"]] = relationship(back_populates="criteria")
     scores: Mapped[list["EvaluationScore"]] = relationship(back_populates="criterion")
 
 
@@ -48,14 +98,19 @@ class Evaluation(Base):
     __tablename__ = "evaluations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     rater_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    target_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    target_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    # Для внешних участников (не зарегистрированных пользователей)
+    target_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
+    target_name_normalized: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
     comment: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow())
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=lambda: dt.datetime.utcnow(), onupdate=lambda: dt.datetime.utcnow())
 
+    event: Mapped[Optional["Event"]] = relationship(back_populates="evaluations")
     rater: Mapped[User] = relationship(back_populates="given_evaluations", foreign_keys=[rater_id])
-    target: Mapped[User] = relationship(back_populates="received_evaluations", foreign_keys=[target_id])
+    target: Mapped[Optional[User]] = relationship(back_populates="received_evaluations", foreign_keys=[target_id])
 
     scores: Mapped[list["EvaluationScore"]] = relationship(back_populates="evaluation", cascade="all, delete-orphan")
 

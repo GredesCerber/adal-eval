@@ -6,6 +6,51 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
+# ==================== Events ====================
+
+class EventCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    description: str = Field(default="", max_length=2000)
+    is_active: bool = True
+
+
+class EventUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    is_active: Optional[bool] = None
+
+
+class EventPublic(BaseModel):
+    id: int
+    name: str
+    description: str
+    is_active: bool
+    created_at: dt.datetime
+    updated_at: dt.datetime
+
+
+class EventWithParticipation(BaseModel):
+    """Событие с информацией о прикреплении текущего пользователя."""
+    id: int
+    name: str
+    description: str
+    is_active: bool
+    is_joined: bool  # Прикреплён ли текущий пользователь
+    participants_count: int  # Количество участников
+    created_at: dt.datetime
+
+
+class EventParticipantPublic(BaseModel):
+    id: int
+    user_id: int
+    full_name: str
+    nickname: str
+    group: str
+    joined_at: dt.datetime
+
+
+# ==================== Auth ====================
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -58,6 +103,7 @@ class ChangePasswordRequest(BaseModel):
 
 class CriterionPublic(BaseModel):
     id: int
+    event_id: Optional[int] = None
     name: str
     description: str
     max_score: float
@@ -65,6 +111,7 @@ class CriterionPublic(BaseModel):
 
 
 class CriterionCreate(BaseModel):
+    event_id: Optional[int] = None
     name: str = Field(min_length=2, max_length=120)
     description: str = Field(default="", max_length=500)
     max_score: float = Field(default=10.0, ge=0)
@@ -72,6 +119,7 @@ class CriterionCreate(BaseModel):
 
 
 class CriterionUpdate(BaseModel):
+    event_id: Optional[int] = None
     name: Optional[str] = Field(default=None, min_length=2, max_length=120)
     description: Optional[str] = Field(default=None, max_length=500)
     max_score: Optional[float] = Field(default=None, ge=0)
@@ -84,6 +132,8 @@ class ScoreInput(BaseModel):
 
 
 class CreateEvaluationRequest(BaseModel):
+    event_id: Optional[int] = None
+    target_name: Optional[str] = Field(default=None, max_length=200)  # Для внешних участников
     comment: str = Field(default="", max_length=2000)
     scores: list[ScoreInput]
 
@@ -111,12 +161,27 @@ class EvaluationPublic(BaseModel):
 
 
 class ResultsRow(BaseModel):
-    student_id: int
+    """Строка итоговой таблицы — агрегация по нормализованному ФИО."""
+    normalized_name: str  # Ключ группировки
+    display_name: str  # Отображаемое ФИО
+    student_id: Optional[int] = None  # ID пользователя (если это зарег. пользователь)
     student_full_name: str
     group: str
     criteria: dict[str, Optional[float]]
-    overall_mean: Optional[float]
+    overall_mean: Optional[float]  # Средний ИТОГО (avg по суммарным баллам)
+    raters_count: int  # COUNT DISTINCT оценщиков
     anomaly_count: int
+
+
+class ResultsDetailRow(BaseModel):
+    """Детальная строка — отдельная оценка."""
+    evaluation_id: int
+    rater_id: int
+    rater_full_name: str
+    scores: dict[str, float]  # criterion_name -> score
+    total_score: float
+    comment: str
+    created_at: dt.datetime
 
 
 class AdminScorePatch(BaseModel):

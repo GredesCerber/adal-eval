@@ -44,7 +44,9 @@ def admin_list_users(
 ):
     query = db.query(User)
     if group:
-        query = query.filter(User.group == group)
+        # Поиск по группе с использованием LIKE для частичного совпадения
+        group_like = f"%{group.strip()}%"
+        query = query.filter(User.group.ilike(group_like))
     if q:
         like = f"%{q.strip()}%"
         query = query.filter((User.full_name.ilike(like)) | (User.nickname.ilike(like)))
@@ -156,9 +158,17 @@ def admin_delete_user(user_id: int, ip: str = Depends(require_admin), db: Sessio
 
 
 @router.get("/criteria", response_model=list[CriterionPublic])
-def admin_list_criteria(ip: str = Depends(require_admin), db: Session = Depends(get_db)):
-    items = db.query(Criterion).order_by(Criterion.id.asc()).all()
-    return [CriterionPublic(id=c.id, name=c.name, description=c.description or "", max_score=float(c.max_score), active=bool(c.active)) for c in items]
+def admin_list_criteria(
+    ip: str = Depends(require_admin), 
+    db: Session = Depends(get_db),
+    event_id: Optional[int] = None,
+):
+    """Получить все критерии. Можно фильтровать по событию."""
+    q = db.query(Criterion)
+    if event_id:
+        q = q.filter(Criterion.event_id == event_id)
+    items = q.order_by(Criterion.id.asc()).all()
+    return [CriterionPublic(id=c.id, event_id=c.event_id, name=c.name, description=c.description or "", max_score=float(c.max_score), active=bool(c.active)) for c in items]
 
 
 @router.post("/criteria", response_model=dict)
@@ -167,12 +177,42 @@ def admin_create_criteria(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    if db.query(Criterion).filter(Criterion.name == payload.name).first():
-        raise HTTPException(status_code=400, detail="Название критерия уже существует")
-    c = Criterion(name=payload.name.strip(), description=(payload.description or "").strip(), max_score=float(payload.max_score), active=bool(payload.active))
+    """Создать критерий (опционально привязанный к событию)."""
+    # Проверка события если указано
+    if payload.event_id:
+        from ..models import Event
+        event = db.query(Event).filter(Event.id == payload.event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Событие не найдено")
+        if not event.is_active:
+            raise HTTPException(status_code=400, detail="Нельзя добавлять критерии к неактивному событию")
+        
+        # Проверка уникальности в рамках события
+        existing = db.query(Criterion).filter(
+            Criterion.event_id == payload.event_id,
+            Criterion.name == payload.name.strip()
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Критерий с таким названием уже существует в этом событии")
+    else:
+        # Глобальный критерий - проверяем глобальную уникальность
+        existing = db.query(Criterion).filter(
+            Criterion.event_id.is_(None),
+            Criterion.name == payload.name.strip()
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Глобальный критерий с таким названием уже существует")
+    
+    c = Criterion(
+        event_id=payload.event_id,
+        name=payload.name.strip(), 
+        description=(payload.description or "").strip(), 
+        max_score=float(payload.max_score), 
+        active=bool(payload.active)
+    )
     db.add(c)
     db.flush()
-    write_audit(db, actor_type="admin", actor_user_id=None, action="create", entity_type="criterion", entity_id=c.id, after={"name": c.name, "max_score": float(c.max_score), "active": bool(c.active)}, ip=ip)
+    write_audit(db, actor_type="admin", actor_user_id=None, action="create", entity_type="criterion", entity_id=c.id, after={"event_id": c.event_id, "name": c.name, "max_score": float(c.max_score), "active": bool(c.active)}, ip=ip)
     db.commit()
     return {"id": c.id}
 
@@ -188,11 +228,17 @@ def admin_update_criteria(
     if not c:
         raise HTTPException(status_code=404, detail="Критерий не найден")
 
-    before = {"name": c.name, "description": c.description, "max_score": float(c.max_score), "active": bool(c.active)}
+    before = {"event_id": c.event_id, "name": c.name, "description": c.description, "max_score": float(c.max_score), "active": bool(c.active)}
 
     if payload.name is not None:
-        other = db.query(Criterion).filter(Criterion.name == payload.name, Criterion.id != criterion_id).first()
-        if other:
+        # Проверяем уникальность в рамках события (или глобально)
+        event_id = c.event_id
+        name_q = db.query(Criterion).filter(Criterion.name == payload.name.strip(), Criterion.id != criterion_id)
+        if event_id:
+            name_q = name_q.filter(Criterion.event_id == event_id)
+        else:
+            name_q = name_q.filter(Criterion.event_id.is_(None))
+        if name_q.first():
             raise HTTPException(status_code=400, detail="Название критерия уже существует")
         c.name = payload.name.strip()
     if payload.description is not None:
@@ -229,10 +275,11 @@ def admin_delete_criteria(criterion_id: int, ip: str = Depends(require_admin), d
     return {"ok": True, "deleted_scores": int(deleted_scores)}
 
 
-@router.get("/evaluations", response_model=dict)
+@router.get("/evaluations", response_model=list)
 def admin_list_evaluations(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
+    event_id: Optional[int] = None,
     target_id: Optional[int] = None,
     rater_id: Optional[int] = None,
     criterion_id: Optional[int] = None,
@@ -240,77 +287,56 @@ def admin_list_evaluations(
     limit: int = 300,
     offset: int = 0,
 ):
+    """Получить все оценки. Фильтрация по event_id, target_id, rater_id."""
     q = (
-        db.query(EvaluationScore)
+        db.query(Evaluation)
         .options(
-            joinedload(EvaluationScore.evaluation).joinedload(Evaluation.rater),
-            joinedload(EvaluationScore.evaluation).joinedload(Evaluation.target),
-            joinedload(EvaluationScore.criterion),
+            joinedload(Evaluation.rater),
+            joinedload(Evaluation.target),
+            joinedload(Evaluation.scores).joinedload(EvaluationScore.criterion),
         )
-        .join(Evaluation, Evaluation.id == EvaluationScore.evaluation_id)
-        .join(Criterion, Criterion.id == EvaluationScore.criterion_id)
     )
+    if event_id is not None:
+        q = q.filter(Evaluation.event_id == event_id)
     if target_id is not None:
         q = q.filter(Evaluation.target_id == target_id)
     if rater_id is not None:
         q = q.filter(Evaluation.rater_id == rater_id)
-    if criterion_id is not None:
-        q = q.filter(EvaluationScore.criterion_id == criterion_id)
 
-    total = q.count()
-    items = q.order_by(EvaluationScore.updated_at.desc()).offset(offset).limit(limit).all()
-
-    # compute anomaly flag per row (per target+criterion)
-    stats_cache: dict[int, dict[int, object]] = {}
+    items = q.order_by(Evaluation.created_at.desc()).offset(offset).limit(limit).all()
 
     out = []
-    for s in items:
-        t_id = s.evaluation.target_id
-        if t_id not in stats_cache:
-            stats_cache[t_id] = get_stats_for_target(db, target_id=t_id, include_inactive=True)
-        stat = stats_cache[t_id].get(int(s.criterion_id))
-        is_anomaly = False
-        z = None
-        delta = None
-        mean = None
-        stdev = None
-        if stat and getattr(stat, "n", 0) >= settings.anomaly_min_samples and getattr(stat, "stdev", 0) and stat.stdev > 0:  # type: ignore
-            mean = float(stat.mean)  # type: ignore
-            stdev = float(stat.stdev)  # type: ignore
-            delta = float(s.score) - mean
-            z = delta / stdev
-            is_anomaly = abs(z) >= settings.anomaly_zscore
+    for ev in items:
+        target_name = ev.target.full_name if ev.target else ev.target_name
+        rater_name = ev.rater.full_name if ev.rater else "—"
+        target_group = ev.target.group if ev.target else None
+        
+        out.append({
+            "id": ev.id,
+            "target_id": ev.target_id,
+            "target_user_id": ev.target_id,
+            "target_full_name": ev.target.full_name if ev.target else None,
+            "target_name": ev.target_name,
+            "target_group": target_group,
+            "rater_id": ev.rater_id,
+            "rater_user_id": ev.rater_id,
+            "rater_full_name": rater_name,
+            "comment": ev.comment or "",
+            "created_at": ev.created_at,
+            "scores": [
+                {"criterion_id": s.criterion_id, "criterion_name": s.criterion.name, "score": float(s.score)}
+                for s in ev.scores
+            ]
+        })
 
-        if anomaly_only and not is_anomaly:
-            continue
-
-        out.append(
-            {
-                "score_id": s.id,
-                "evaluation_id": s.evaluation_id,
-                "target": s.evaluation.target.full_name,
-                "rater": s.evaluation.rater.full_name,
-                "criterion": s.criterion.name,
-                "max_score": float(s.criterion.max_score),
-                "score": float(s.score),
-                "comment": s.evaluation.comment or "",
-                "created_at": s.evaluation.created_at,
-                "updated_at": s.updated_at,
-                "mean": mean,
-                "stdev": stdev,
-                "z": z,
-                "delta": delta,
-                "is_anomaly": is_anomaly,
-            }
-        )
-
-    return {"total": total, "items": out}
+    return out
 
 
 @router.get("/evaluations/export/xlsx")
 def admin_export_evaluations_xlsx(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
+    event_id: Optional[int] = None,
     target_id: Optional[int] = None,
     rater_id: Optional[int] = None,
     criterion_id: Optional[int] = None,
@@ -327,6 +353,8 @@ def admin_export_evaluations_xlsx(
         .join(Evaluation, Evaluation.id == EvaluationScore.evaluation_id)
         .join(Criterion, Criterion.id == EvaluationScore.criterion_id)
     )
+    if event_id is not None:
+        q = q.filter(Evaluation.event_id == event_id)
     if target_id is not None:
         q = q.filter(Evaluation.target_id == target_id)
     if rater_id is not None:

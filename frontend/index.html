@@ -5,160 +5,226 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#161b22" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <title>Оценивание студентов</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <title>Платформа оценивания</title>
+  <link rel="stylesheet" href="/css/style.css?v=1.2.0" />
 </head>
 <body>
   <div class="container">
-    <div class="header">
+    <header class="header">
       <div>
-        <div class="brand">📚 Платформа оценивания Adal Eval</div>
-        <div class="text-secondary" id="meLine" style="margin-top:4px;font-size:13px"></div>
+        <div class="brand">🎯 Adal Eval</div>
+        <div id="meLine" class="muted user-line"></div>
       </div>
-      <button class="nav-toggle" id="navToggle" aria-label="Меню">
-        <span class="bar"></span>
-        <span>Меню</span>
-      </button>
-      <div class="nav">
-        <button class="tabbtn active" data-tab="eval">📋 Оценивание</button>
-        <button class="tabbtn" data-tab="results">📊 Итоги</button>
+      <div class="header-controls">
+        <button class="theme-toggle" id="mainThemeToggle" aria-label="Тема">🌙</button>
+        <button type="button" class="nav-toggle" id="navToggle" aria-label="Меню">
+          <span class="bar"></span><span>Меню</span>
+        </button>
+      </div>
+      <nav class="nav" id="mainNav">
+        <button class="tabbtn active" data-tab="events">📅 События</button>
+        <button class="tabbtn" data-tab="eval">⭐ Оценить</button>
+        <button class="tabbtn" data-tab="results">📊 Результаты</button>
         <button class="tabbtn" data-tab="profile">👤 Профиль</button>
-        <button class="theme-toggle" aria-label="Переключить тему">🌙</button>
-        <button class="tabbtn danger" id="logout">Выход</button>
-      </div>
-    </div>
+        <button class="theme-toggle nav-theme" id="navThemeToggle" aria-label="Тема">🌙</button>
+        <button class="tabbtn danger" id="logout">🚪 Выйти</button>
+      </nav>
+    </header>
 
-    <div id="tab-eval" class="panel" style="margin-top:16px;">
-      <div class="row" style="margin-bottom:16px;">
-        <input id="studentQ" placeholder="🔍 Поиск (ФИО/никнейм)" style="flex:1;min-width:200px" />
-        <input id="studentGroup" name="group_filter_eval" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" readonly />
-        <button class="btn primary" id="reloadStudents">↻ Обновить</button>
-        <span id="evalStatus" class="muted"></span>
+    <!-- ============ СОБЫТИЯ ============ -->
+    <section id="tab-events" class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">📅 Мои события</h2>
+        <span id="eventsStatus" class="muted"></span>
       </div>
-      <div class="tablewrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Студент</th>
-              <th>Группа</th>
-              <th style="width:140px">Действия</th>
-            </tr>
-          </thead>
-          <tbody id="studentsBody"></tbody>
-        </table>
+      <p class="muted info-hint">💡 События, к которым вы прикреплены, отображаются первыми. Прикрепление даёт возможность оценивать и быть оценённым.</p>
+      
+      <!-- Скрытые поля для обмана автозаполнения -->
+      <input type="text" style="display:none" aria-hidden="true" />
+      <input type="password" style="display:none" aria-hidden="true" />
+      
+      <div class="row" style="margin-bottom:12px;">
+        <input id="eventsSearch" type="search" placeholder="🔍 Поиск события..." style="flex:1;max-width:400px;" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" />
       </div>
-    </div>
+      
+      <div id="eventsGrid" class="events-grid"></div>
+    </section>
 
-    <div id="tab-results" class="panel" style="margin-top:16px; display:none;">
-      <div class="row" style="margin-bottom:16px;">
-        <input id="resultsQ" placeholder="🔍 Поиск (ФИО/никнейм)" style="flex:1;min-width:160px;max-width:340px" />
-        <input id="resultsGroup" name="group_filter_results" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" readonly />
-        <select id="resultsSort" style="width:220px">
-          <option value="name">Сортировка: имя</option>
-          <option value="overall">Сортировка: общий средний</option>
-        </select>
-        <select id="resultsOrder" style="width:140px">
-            <option value="asc">По возрастанию</option>
-            <option value="desc">По убыванию</option>
-        </select>
-        <button class="btn" id="reloadResults" style="display:none">↻ Обновить</button>
+    <!-- ============ ОЦЕНИВАНИЕ ============ -->
+    <section id="tab-eval" class="panel" style="display:none;">
+      <div class="panel-header">
+        <h2 class="panel-title">⭐ Оценивание участников</h2>
+      </div>
+      
+      <div id="evalNotActive" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>Выберите событие</h3>
+        <p>Перейдите во вкладку "События" и прикрепитесь к событию для оценивания.</p>
+      </div>
+      
+      <div id="evalContent" style="display:none;">
+        <div class="row" style="margin-bottom:12px;gap:8px;align-items:center;">
+          <label style="font-weight:600;">Событие:</label>
+          <select id="evalEvent" style="min-width:200px;flex:1;max-width:400px;"></select>
+        </div>
+        
+        <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <input id="studentQ" placeholder="🔍 Поиск по ФИО" style="flex:1;min-width:180px" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="student-search-unique" />
+          <input id="studentGroup" placeholder="Группа" style="width:120px" autocomplete="off" />
+          <button class="btn" id="reloadStudents">↻</button>
+          <span class="muted" id="evalStatus"></span>
+        </div>
+
+        <div class="tablewrap">
+          <table class="tbl">
+            <thead><tr><th>Участник</th><th>Группа</th><th style="width:100px">Действие</th></tr></thead>
+            <tbody id="studentsBody"></tbody>
+          </table>
+        </div>
+        
+        <div style="margin-top:16px;padding:12px;background:var(--card-bg);border-radius:8px;">
+          <b>Внешний участник</b>
+          <p class="muted" style="margin:4px 0 8px;">Оценить человека, которого нет в списке:</p>
+          <div class="row" style="gap:8px;">
+            <input id="externalName" placeholder="ФИО участника" style="flex:1;" autocomplete="off" autocapitalize="off" name="external-name-unique" />
+            <button class="btn primary" id="openExternalModal">Оценить</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ РЕЗУЛЬТАТЫ ============ -->
+    <section id="tab-results" class="panel" style="display:none;">
+      <div class="panel-header">
+        <h2 class="panel-title">📊 Итоговая таблица</h2>
         <span id="resultsStatus" class="muted"></span>
       </div>
+      
+      <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div class="searchable-select" style="min-width:220px;">
+          <input type="text" id="resultsEventSearch" class="searchable-input" placeholder="Выберите событие..." autocomplete="off" />
+          <input type="hidden" id="resultsEvent" />
+          <div class="searchable-dropdown" id="resultsEventDropdown"></div>
+        </div>
+        <input id="resultsQ" placeholder="🔍 Поиск" style="flex:1;min-width:160px" />
+        <input id="resultsGroup" placeholder="Группа" style="width:120px" autocomplete="off" />
+        <select id="resultsSort" style="width:140px">
+          <option value="name">По имени</option>
+          <option value="overall">По ИТОГО</option>
+          <option value="raters">По оценщикам</option>
+        </select>
+        <select id="resultsOrder" style="width:100px">
+          <option value="asc">↑ возр</option>
+          <option value="desc">↓ убыв</option>
+        </select>
+      </div>
+
       <div class="tablewrap">
-        <table>
+        <table class="tbl">
           <thead id="resultsHead"></thead>
           <tbody id="resultsBody"></tbody>
         </table>
       </div>
-    </div>
+    </section>
 
-    <div id="tab-profile" class="panel" style="margin-top:16px; display:none;">
-      <h3 class="panel-title" style="margin-bottom:16px">Информация о профиле</h3>
-      <div class="profile-grid">
-        <div class="profile-item">
-          <div class="profile-label">ФИО</div>
-          <div class="profile-value" id="pFull">—</div>
+    <!-- ============ ПРОФИЛЬ ============ -->
+    <section id="tab-profile" class="panel" style="display:none;">
+      <h2 class="panel-title">👤 Мой профиль</h2>
+      <div class="row" style="gap:20px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:280px;">
+          <p><b>ФИО:</b> <span id="pFull"></span></p>
+          <p><b>Группа:</b> <span id="pGroup"></span></p>
+          <p><b>Никнейм:</b> <span id="pNick"></span></p>
+          <p class="muted"><b>Регистрация:</b> <span id="pCreated"></span></p>
         </div>
-        <div class="profile-item">
-          <div class="profile-label">Группа</div>
-          <div class="profile-value" id="pGroup">—</div>
-        </div>
-        <div class="profile-item">
-          <div class="profile-label">Никнейм</div>
-          <div class="profile-value" id="pNick">—</div>
-        </div>
-        <div class="profile-item">
-          <div class="profile-label">Регистрация</div>
-          <div class="profile-value" id="pCreated">—</div>
+        <div style="flex:1;min-width:280px;">
+          <h3 style="margin-bottom:10px;">Редактировать</h3>
+          <input id="editFull" placeholder="ФИО" style="width:100%;margin-bottom:8px;" />
+          <input id="editGroup" placeholder="Группа" style="width:100%;margin-bottom:8px;" autocomplete="off" />
+          <input id="editNick" placeholder="Никнейм" style="width:100%;margin-bottom:8px;" />
+          <button class="btn primary" id="saveProfile">Сохранить</button>
+          <span class="muted" id="profileStatus"></span>
         </div>
       </div>
-
-      <div style="margin-top:20px;" class="panel">
-        <h4 class="panel-title" style="margin-bottom:12px">Редактирование профиля</h4>
-        <div class="row" style="margin-bottom:10px;">
-          <input id="editFull" placeholder="ФИО" style="flex:1;min-width:180px" />
-          <input id="editGroup" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" />
-          <input id="editNick" placeholder="Никнейм" style="width:180px" autocomplete="username" />
-        </div>
-        <div class="row" style="margin-top:8px;align-items:center;gap:12px;">
-          <button class="btn primary" id="saveProfile" style="width:200px">Сохранить изменения</button>
-          <span id="profileStatus" class="muted"></span>
-        </div>
-        <div class="text-secondary" style="margin-top:8px;font-size:13px;">При смене никнейма токен обновится автоматически.</div>
+      <hr style="margin:20px 0;">
+      <h3>Сменить пароль</h3>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <input id="oldPass" type="password" placeholder="Текущий пароль" style="min-width:180px;" />
+        <input id="newPass" type="password" placeholder="Новый пароль" style="min-width:180px;" />
+        <button class="btn" id="changePass">Сменить</button>
+        <span class="muted" id="passStatus"></span>
       </div>
-
-      <div style="margin-top:20px;" class="panel">
-        <h4 class="panel-title" style="margin-bottom:12px">Смена пароля</h4>
-        <div class="row">
-          <input id="oldPass" type="password" placeholder="Старый пароль" style="flex:1;min-width:180px" autocomplete="current-password" />
-          <input id="newPass" type="password" placeholder="Новый пароль" style="flex:1;min-width:180px" autocomplete="new-password" />
-          <button class="btn primary" id="changePass">Сменить</button>
-          <span id="passStatus" class="muted"></span>
-        </div>
-      </div>
-    </div>
+    </section>
   </div>
 
-  <!-- Student modal -->
+  <!-- Модалка оценки -->
   <div class="modal" id="studentModal">
-    <div class="modal-card">
-      <div class="modal-head">
+    <div class="modal-content" style="max-width:800px;">
+      <div class="modal-header">
         <div>
-          <h2 class="modal-title" id="mTitle">Студент</h2>
-          <div class="modal-subtitle" id="mSub"></div>
+          <h3 id="mTitle"></h3>
+          <p id="mSub" class="muted"></p>
         </div>
-        <button class="modal-close" id="mClose" aria-label="Закрыть">×</button>
+        <button class="modal-close" id="mClose">✕</button>
       </div>
-
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-header">
-          <span class="badge primary">📊 Оценки</span>
-          <span class="muted" id="mStatus"></span>
-        </div>
-        <div class="tablewrap">
-          <table>
+      <div class="modal-body">
+        <div class="tablewrap" style="max-height:300px;overflow-y:auto;">
+          <table class="tbl" style="font-size:13px;">
             <thead id="mHead"></thead>
             <tbody id="mBody"></tbody>
           </table>
         </div>
-      </div>
-
-      <div class="panel" style="margin-top:16px;">
-        <div class="panel-header">
-          <span class="badge success" id="mFormTitle">✏️ Ваша оценка</span>
-          <span class="muted" id="mAddStatus"></span>
-        </div>
-        <div id="mForm" style="margin-top:12px;"></div>
-        <div class="row" style="margin-top:12px;">
-          <textarea id="mComment" placeholder="💬 Комментарий (необязательно)"></textarea>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <button class="btn primary lg" id="mSubmit" style="flex:1">💾 Сохранить оценку</button>
+        <p id="mStatus" class="muted"></p>
+        <hr style="margin:16px 0;">
+        <h4 style="margin-bottom:10px;">Ваша оценка</h4>
+        <div id="mForm"></div>
+        <textarea id="mComment" placeholder="Комментарий (необязательно)" rows="2" style="width:100%;margin-top:10px;"></textarea>
+        <div class="row" style="margin-top:12px;justify-content:space-between;">
+          <span id="mAddStatus" class="muted"></span>
+          <button class="btn primary lg" id="mSubmit">Отправить оценку</button>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="/js/app.js"></script>
+  <!-- Модалка детализации -->
+  <div class="modal" id="detailModal">
+    <div class="modal-content" style="max-width:900px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="dTitle">Детализация оценок</h3>
+          <p id="dSub" class="muted"></p>
+        </div>
+        <button class="modal-close" id="dClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="tablewrap" style="max-height:400px;overflow-y:auto;">
+          <table class="tbl" style="font-size:13px;">
+            <thead id="dHead"></thead>
+            <tbody id="dBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка подтверждения -->
+  <div class="modal" id="confirmModal">
+    <div class="modal-content" style="max-width:400px;">
+      <div class="modal-header">
+        <h3 id="confirmTitle">Подтверждение</h3>
+        <button class="modal-close" id="confirmClose">✕</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <p id="confirmText" style="margin-bottom:20px;"></p>
+        <div class="row" style="justify-content:center;gap:12px;">
+          <button class="btn" id="confirmCancel">Отмена</button>
+          <button class="btn primary" id="confirmOk">Подтвердить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js?v=1.2.0"></script>
 </body>
 </html>

@@ -180,29 +180,50 @@ export function toast(message, type = 'info', duration = 4000) {
 
 /* ========== Mobile nav toggle ========== */
 export function initNavToggle() {
-  const toggle = qs('.nav-toggle');
-  const nav = qs('.nav');
+  const toggle = qs('#navToggle');
+  // Ищем nav по id или по классу
+  const nav = qs('#mainNav') || qs('#adminNav') || qs('#loginNav') || qs('#registerNav') || qs('.nav');
+  
   if (toggle && nav) {
-    toggle.addEventListener('click', () => {
-      nav.classList.toggle('open');
-    });
+    // Проверяем, не был ли уже добавлен обработчик
+    if (!toggle.dataset.bound) {
+      toggle.dataset.bound = 'true';
+      
+      // Используем несколько типов событий для надёжности на мобильных
+      const handleToggle = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        nav.classList.toggle('open');
+      };
+      
+      toggle.addEventListener('click', handleToggle);
+      toggle.addEventListener('touchend', handleToggle, { passive: false });
+    }
   }
 }
 
 /* ========== Init common ========== */
 export function initCommon() {
   initTheme();
-  initNavToggle();
   
-  // Theme toggle button
-  const themeBtn = qs('.theme-toggle');
-  if (themeBtn) {
-    themeBtn.addEventListener('click', () => {
+  // Theme toggle buttons - обрабатываем все кнопки темы
+  const themeBtns = qsa('.theme-toggle');
+  const current = getTheme();
+  
+  // Функция для обновления всех кнопок
+  const updateAllThemeBtns = (theme) => {
+    const icon = theme === 'dark' ? '☀️' : '🌙';
+    themeBtns.forEach(btn => btn.innerHTML = icon);
+  };
+  
+  // Устанавливаем начальную иконку для всех
+  updateAllThemeBtns(current);
+  
+  // Добавляем обработчики на все кнопки
+  themeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
       const next = toggleTheme();
-      themeBtn.innerHTML = next === 'dark' ? '☀️' : '🌙';
+      updateAllThemeBtns(next);
     });
-    // Set initial icon
-    const current = getTheme();
-    themeBtn.innerHTML = current === 'dark' ? '☀️' : '🌙';
-  }
+  });
 }

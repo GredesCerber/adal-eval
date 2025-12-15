@@ -6,26 +6,30 @@
   <meta name="theme-color" content="#161b22" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Регистрация</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=1.2.0" />
 </head>
 <body class="auth-page">
   <div class="container">
-    <div class="header">
+    <header class="header">
       <div class="brand">📚 Платформа оценивания Adal Eval</div>
-      <button class="nav-toggle" id="navToggle" aria-label="Меню">
-        <span class="bar"></span>
-        <span>Меню</span>
-      </button>
-      <div class="nav">
-        <a class="tabbtn" href="/login.html">🔑 Вход</a>
-        <button class="theme-toggle" aria-label="Переключить тему">🌙</button>
+      <div class="header-controls">
+        <button class="theme-toggle" id="registerThemeToggle" aria-label="Переключить тему">🌙</button>
+        <button type="button" class="nav-toggle" id="navToggle" aria-label="Меню">
+          <span class="bar"></span>
+          <span>Меню</span>
+        </button>
       </div>
-    </div>
+      <nav class="nav" id="registerNav">
+        <a class="tabbtn" href="/login.html">🔑 Вход</a>
+        <button class="theme-toggle nav-theme" aria-label="Переключить тему">🌙</button>
+      </nav>
+    </header>
 
     <div class="panel-wrapper">
-      <div class="panel" style="margin-top:20px; max-width:520px;">
-      <h2 style="margin:0 0 8px 0;">📝 Регистрация</h2>
-      <p class="text-secondary" style="margin:0 0 20px 0;">Заполните данные для создания аккаунта</p>
+      <div class="panel auth-card" style="margin-top:20px; max-width:520px;">
+      <div class="auth-icon">🚀</div>
+      <h2 style="margin:0 0 8px 0;">Создать аккаунт</h2>
+      <p class="text-secondary" style="margin:0 0 24px 0;">Заполните данные для регистрации</p>
 
       <form id="form" autocomplete="off">
         <div class="row">
@@ -38,7 +42,10 @@
           <input id="nickname" name="nickname" placeholder="Никнейм" style="flex:1" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
         </div>
         <div class="row" style="margin-top:12px;">
-          <input id="password" type="password" name="password" placeholder="Пароль (мин. 6 символов)" style="flex:1" autocomplete="new-password" minlength="6" required />
+          <div style="flex:1;position:relative;">
+            <input id="password" type="password" name="password" placeholder="Пароль (мин. 6 символов)" style="width:100%;padding-right:44px;" autocomplete="new-password" minlength="6" required />
+            <button type="button" id="togglePass" class="pass-toggle" aria-label="Показать пароль">○</button>
+          </div>
         </div>
 
         <div class="row" style="margin-top:16px;">
@@ -53,12 +60,22 @@
   </div>
 
   <script type="module">
-    import { api, setToken, qs, initCommon, toast } from '/js/common.js';
+    import { api, setToken, qs, initCommon, initNavToggle, toast } from '/js/common.js';
 
     initCommon();
+    initNavToggle();
 
     const form = qs('#form');
     const status = qs('#status');
+    
+    // Toggle password visibility
+    const passInput = qs('#password');
+    const toggleBtn = qs('#togglePass');
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = passInput.type === 'password';
+      passInput.type = isPassword ? 'text' : 'password';
+      toggleBtn.textContent = isPassword ? '◉' : '○';
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

@@ -1,142 +1,285 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#161b22" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <title>Админ-панель</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <title>Админ · Adal Eval</title>
+  <link rel="stylesheet" href="/css/style.css?v=1.2.0" />
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div>
-        <div class="brand">⚙️ Администратор</div>
+    
+    <!-- ========== ФОРМА АВТОРИЗАЦИИ АДМИНА ========== -->
+    <div id="authPanel" class="auth-panel auth-page">
+      <div class="header" style="margin-bottom:0;">
+        <div class="brand">⚙️ Админ-панель</div>
+        <div class="nav">
+          <a class="tabbtn" href="/login.html">🔙 Назад</a>
+          <button class="theme-toggle" aria-label="Тема">🌙</button>
+        </div>
       </div>
-      <button class="nav-toggle" id="navToggle" aria-label="Меню">
-        <span class="bar"></span>
-        <span>Меню</span>
-      </button>
-      <div class="nav">
-        <a class="tabbtn" href="/login.html">🔑 Вход пользователя</a>
-        <button class="theme-toggle" aria-label="Переключить тему">🌙</button>
+      <div class="panel-wrapper">
+        <div class="panel auth-card" style="max-width:400px;">
+          <div class="auth-icon">🔐</div>
+          <h2 style="margin:0 0 8px;">Вход в админ-панель</h2>
+          <p class="muted" style="margin:0 0 20px;">Введите учётные данные администратора</p>
+          
+          <form id="authForm">
+            <div class="form-group">
+              <label class="form-label"></label>
+              <input id="aLogin" type="text" placeholder="admin" autocomplete="username" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label"></label>
+              <div style="position:relative;">
+                <input id="aPass" type="password" placeholder="Пароль" autocomplete="current-password" style="width:100%;padding-right:44px;" required />
+                <button type="button" id="toggleAdminPass" class="pass-toggle" aria-label="Показать пароль">○</button>
+              </div>
+            </div>
+            <button type="submit" class="btn primary lg" style="width:100%;">Войти</button>
+            <p id="authStatus" class="muted" style="margin-top:10px; text-align:center;"></p>
+          </form>
+          
+          <div style="margin-top:20px; text-align:center;">
+            <a href="/login.html">← Вернуться к входу пользователя</a>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="panel" style="margin-top:16px;" id="adminAuthPanel">
-      <h3 class="panel-title" style="margin-bottom:16px">🔐 Вход в админ-панель</h3>
-      <div class="row">
-        <input id="aLogin" placeholder="Логин администратора" style="flex:1;min-width:200px" autocomplete="username" />
-        <input id="aPass" type="password" placeholder="Пароль администратора" style="flex:1;min-width:200px" autocomplete="current-password" />
-        <button class="btn primary lg" id="aEnter">Войти</button>
-        <span class="muted" id="aStatus"></span>
-      </div>
-    </div>
+    <!-- ========== ОСНОВНОЙ ИНТЕРФЕЙС АДМИНКИ ========== -->
+    <div id="adminApp" style="display:none;">
+      
+      <header class="header">
+        <div>
+          <div class="brand">⚙️ Админ-панель</div>
+        </div>
+        <div class="header-controls">
+          <button class="theme-toggle" id="adminThemeToggle" aria-label="Тема">🌙</button>
+          <button type="button" class="nav-toggle" id="navToggle" aria-label="Меню">
+            <span class="bar"></span><span>Меню</span>
+          </button>
+        </div>
+        <nav class="nav" id="adminNav">
+          <button class="tabbtn active" data-tab="events">📅 События</button>
+          <button class="tabbtn" data-tab="criteria">📋 Критерии</button>
+          <button class="tabbtn" data-tab="users">👤 Пользователи</button>
+          <button class="tabbtn" data-tab="evals">⭐ Оценки</button>
+          <button class="theme-toggle nav-theme" id="navAdminThemeToggle" aria-label="Тема">🌙</button>
+          <button class="btn danger" id="logout">Выйти</button>
+        </nav>
+      </header>
 
-    <div class="panel" style="margin-top:16px; display:none;" id="adminApp">
-      <div class="row" style="margin-bottom:16px;">
-        <button class="tabbtn active" data-atab="users">👥 Пользователи</button>
-        <button class="tabbtn" data-atab="criteria">📐 Критерии</button>
-        <button class="tabbtn" data-atab="evals">📝 Оценки</button>
-        <button class="tabbtn" data-atab="audit">📋 Логи</button>
-        <div class="spacer"></div>
-        <button class="tabbtn danger" id="aLogout">Выйти</button>
+      <!-- Глобальный селект события (скрыт на вкладке событий) -->
+      <div class="global-event-bar" id="globalEventBar">
+        <label>📅 Событие:</label>
+        <div class="searchable-select" id="eventSelectWrapper">
+          <input type="text" id="globalEventSearch" class="searchable-input" placeholder="🔍 Поиск события..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <input type="hidden" id="globalEvent" value="" />
+          <div class="searchable-dropdown" id="eventDropdown"></div>
+        </div>
+        <span id="globalEventStatus" class="muted"></span>
       </div>
 
-      <!-- Users -->
-      <div id="a-users">
-        <div class="row" style="margin-bottom:12px;">
-          <input id="uQ" placeholder="🔍 Поиск" style="flex:1;min-width:180px" />
-          <input id="uGroup" name="group_filter_admin" placeholder="Группа" style="width:180px" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" readonly />
-          <button class="btn" id="uReload">↻ Обновить</button>
-          <button class="btn success" id="uAdd">+ Добавить</button>
-          <span class="muted" id="uStatus"></span>
+      <!-- ========== TAB: СОБЫТИЯ ========== -->
+      <section id="tab-events" class="panel">
+        <div class="panel-header">
+          <h2>📅 Управление событиями</h2>
+          <span id="eventsStatus" class="muted"></span>
+        </div>
+        <div class="actions-bar">
+          <input id="eventQ" type="text" placeholder="🔍 Поиск..." style="flex:1;max-width:250px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="admin-event-search-unique" />
+          <select id="eventSort" style="width:150px;">
+            <option value="id-desc">↓ ID (новые)</option>
+            <option value="id-asc">↑ ID (старые)</option>
+            <option value="name-asc">↑ Название</option>
+            <option value="name-desc">↓ Название</option>
+          </select>
+          <button id="addEvent" class="btn primary">➕ Создать событие</button>
         </div>
         <div class="tablewrap">
           <table>
             <thead>
-              <tr><th style="width:50px">№</th><th>Ник</th><th>ФИО</th><th>Группа</th><th style="width:90px">Активен</th><th style="width:100px">Действия</th></tr>
+              <tr><th>ID</th><th>Название</th><th>Описание</th><th>Активно</th><th>Участников</th><th>Создано</th><th style="width:120px"></th></tr>
             </thead>
-            <tbody id="uBody"></tbody>
+            <tbody id="eventsBody"></tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <!-- Criteria -->
-      <div id="a-criteria" style="display:none;">
-        <div class="row" style="margin-bottom:12px;">
-          <button class="btn" id="cReload">↻ Обновить</button>
-          <button class="btn success" id="cAdd">+ Добавить</button>
-          <span class="muted" id="cStatus"></span>
+      <!-- ========== TAB: КРИТЕРИИ ========== -->
+      <section id="tab-criteria" class="panel" style="display:none;">
+        <div class="panel-header">
+          <h2>📋 Критерии оценки</h2>
+          <span id="critStatus" class="muted"></span>
+        </div>
+        <p class="muted info-hint">💡 Критерии привязаны к выбранному событию</p>
+        <div class="actions-bar">
+          <button id="addCrit" class="btn primary">➕ Добавить критерий</button>
         </div>
         <div class="tablewrap">
           <table>
             <thead>
-              <tr><th style="width:50px">№</th><th>Название</th><th>Описание</th><th style="width:80px">Макс</th><th style="width:90px">Активен</th><th style="width:100px"></th></tr>
+              <tr><th>ID</th><th>Название</th><th>Макс.балл</th><th>Описание</th><th>Активен</th><th style="width:120px"></th></tr>
             </thead>
-            <tbody id="cBody"></tbody>
+            <tbody id="critBody"></tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <!-- Evals -->
-      <div id="a-evals" style="display:none;">
-        <div class="row" style="margin-bottom:12px;flex-wrap:wrap;">
-          <input id="eTarget" list="eTargetList" placeholder="🎯 Оцениваемый" style="flex:1;min-width:200px" />
-          <datalist id="eTargetList"></datalist>
-          <input id="eRater" list="eRaterList" placeholder="👤 Оценивающий" style="flex:1;min-width:200px" />
-          <datalist id="eRaterList"></datalist>
-          <select id="eCrit" style="min-width:180px"><option value="">Критерий: любой</option></select>
-          <label class="btn ghost"><input id="eAnom" type="checkbox" /> ⚠️ Аномалии</label>
-          <button class="btn" id="eExportCsv">📥 CSV</button>
-          <button class="btn" id="eExportXlsx">📊 Excel</button>
-          <button class="btn danger" id="ePurgeAll">🗑 Удалить все</button>
-          <span class="muted" id="eStatus"></span>
+      <!-- ========== TAB: ПОЛЬЗОВАТЕЛИ ========== -->
+      <section id="tab-users" class="panel" style="display:none;">
+        <div class="panel-header">
+          <h2>👤 Пользователи</h2>
+          <span id="usersStatus" class="muted"></span>
         </div>
-
-        <div class="tablewrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Оцениваемый</th><th>Оценивающий</th><th>Критерий</th><th class="td-num">Балл</th><th class="td-num">Сред.</th><th class="td-num">Δ</th><th class="td-num">z</th><th>Комментарий</th><th style="width:60px"></th>
-              </tr>
-            </thead>
-            <tbody id="eBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Audit -->
-      <div id="a-audit" style="display:none;">
-        <div class="row" style="margin-bottom:12px;">
-          <button class="btn" id="lReload">↻ Обновить</button>
-          <span class="muted" id="lStatus"></span>
+        <div class="actions-bar">
+          <input id="userQ" type="text" placeholder="🔍 Поиск..." style="flex:1;max-width:300px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <input id="userGroup" type="text" placeholder="Группа" style="width:120px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <button id="reloadUsers" class="btn">↻</button>
+          <button id="addUser" class="btn primary">➕ Добавить</button>
         </div>
         <div class="tablewrap">
           <table>
             <thead>
-              <tr><th>Когда</th><th>Действие</th><th>Сущность</th><th>№</th><th>До</th><th>После</th><th>IP</th></tr>
+              <tr><th>ID</th><th>ФИО</th><th>Группа</th><th>Ник</th><th>Активен</th><th style="width:180px"></th></tr>
             </thead>
-            <tbody id="lBody"></tbody>
+            <tbody id="usersBody"></tbody>
           </table>
         </div>
-      </div>
+      </section>
+
+      <!-- ========== TAB: ОЦЕНКИ ========== -->
+      <section id="tab-evals" class="panel" style="display:none;">
+        <div class="panel-header">
+          <h2>⭐ Все оценки</h2>
+          <span id="evalsStatus" class="muted"></span>
+        </div>
+        <p class="muted info-hint">💡 Показаны оценки для выбранного события</p>
+        
+        <!-- Переключатель режимов -->
+        <div class="view-toggle" style="margin-bottom:12px;">
+          <button class="view-btn active" data-view="detail">📋 Детально</button>
+          <button class="view-btn" data-view="report">📊 Отчёт</button>
+        </div>
+        
+        <div class="actions-bar">
+          <input id="evalQ" type="text" placeholder="🔍 Поиск..." style="flex:1;max-width:200px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <input id="evalGroup" type="text" placeholder="Группа" style="width:100px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <button id="reloadEvals" class="btn">↻</button>
+          <button id="exportExcel" class="btn primary">📥 Excel</button>
+          <button id="purgeEvals" class="btn danger">🗑️ Удалить все</button>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead id="evalsHead"></thead>
+            <tbody id="evalsBody"></tbody>
+          </table>
+        </div>
+      </section>
 
     </div>
   </div>
 
-  <!-- Simple modal -->
-  <div class="modal" id="adminModal">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h2 class="modal-title" id="amTitle">Действие</h2>
-        <button class="modal-close" id="amClose" aria-label="Закрыть">×</button>
+  <!-- ========== МОДАЛКА: СОБЫТИЕ ========== -->
+  <div class="modal" id="eventModal">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 id="eTitle">📅 Событие</h3>
+        <button class="modal-close" id="eClose">✕</button>
       </div>
-      <div id="amBody" style="margin-top:16px;"></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Название</label>
+          <input id="eName" type="text" placeholder="Название события" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Описание</label>
+          <textarea id="eDesc" rows="3" placeholder="Описание (необязательно)" autocomplete="off"></textarea>
+        </div>
+        <div class="form-group">
+          <label><input id="eActive" type="checkbox" checked /> Активно</label>
+        </div>
+        <div class="row" style="margin-top:16px;gap:10px;">
+          <button id="eSave" class="btn primary">💾 Сохранить</button>
+          <button id="eCancel" class="btn">Отмена</button>
+        </div>
+        <p id="eStatus" class="muted" style="margin-top:10px;"></p>
+      </div>
     </div>
   </div>
 
-  <script type="module" src="/js/admin.js"></script>
+  <!-- ========== МОДАЛКА: КРИТЕРИЙ ========== -->
+  <div class="modal" id="critModal">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 id="cTitle">📋 Критерий</h3>
+        <button class="modal-close" id="cClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Название</label>
+          <input id="cName" type="text" placeholder="Название критерия" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Максимальный балл</label>
+          <input id="cMax" type="number" step="1" min="1" value="10" style="width:120px;" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Описание</label>
+          <textarea id="cDesc" rows="2" placeholder="Описание (необязательно)" autocomplete="off"></textarea>
+        </div>
+        <div class="form-group">
+          <label><input id="cActive" type="checkbox" checked /> Активен</label>
+        </div>
+        <div class="row" style="margin-top:16px;gap:10px;">
+          <button id="cSave" class="btn primary">💾 Сохранить</button>
+          <button id="cCancel" class="btn">Отмена</button>
+        </div>
+        <p id="cStatus" class="muted" style="margin-top:10px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== МОДАЛКА: ПОЛЬЗОВАТЕЛЬ ========== -->
+  <div class="modal" id="userModal">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 id="uTitle">👤 Пользователь</h3>
+        <button class="modal-close" id="uClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">ФИО</label>
+          <input id="uFull" type="text" placeholder="ФИО" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Группа</label>
+          <input id="uGrp" type="text" placeholder="Группа" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Никнейм</label>
+          <input id="uNick" type="text" placeholder="Никнейм" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="form-group" id="uPassGroup" style="display:none;">
+          <label class="form-label">Пароль</label>
+          <input id="uPass" type="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label><input id="uActive" type="checkbox" checked /> Активен</label>
+        </div>
+        <div class="row" style="margin-top:16px;gap:10px;">
+          <button id="uSave" class="btn primary">💾 Сохранить</button>
+          <button id="uResetPass" class="btn" style="display:none;">🔑 Сбросить пароль</button>
+          <button id="uCancel" class="btn">Отмена</button>
+        </div>
+        <p id="uStatus" class="muted" style="margin-top:10px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/admin.js?v=1.2.0"></script>
 </body>
 </html>
