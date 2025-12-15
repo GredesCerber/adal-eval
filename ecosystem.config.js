@@ -34,7 +34,7 @@ const portArg = Number.isFinite(port) ? port : 8000;
 module.exports = {
   apps: [
     {
-      name: 'student-eval-api',
+      name: 'adal-eval-api',
       cwd: __dirname,
       script: python,
       args: `-m uvicorn backend.main:app --host ${host} --port ${portArg}`,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import csv
 import datetime as dt
+import traceback
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -164,11 +165,16 @@ def admin_list_criteria(
     event_id: Optional[int] = None,
 ):
     """Получить все критерии. Можно фильтровать по событию."""
-    q = db.query(Criterion)
-    if event_id:
-        q = q.filter(Criterion.event_id == event_id)
-    items = q.order_by(Criterion.id.asc()).all()
-    return [CriterionPublic(id=c.id, event_id=c.event_id, name=c.name, description=c.description or "", max_score=float(c.max_score), active=bool(c.active)) for c in items]
+    try:
+        q = db.query(Criterion)
+        if event_id:
+            q = q.filter(Criterion.event_id == event_id)
+        items = q.order_by(Criterion.id.asc()).all()
+        return [CriterionPublic(id=c.id, event_id=c.event_id, name=c.name, description=c.description or "", max_score=float(c.max_score), active=bool(c.active)) for c in items]
+    except Exception as exc:
+        tb = traceback.format_exc()
+        print(f"[admin_list_criteria] ERROR:\n{tb}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(exc)}")
 
 
 @router.post("/criteria", response_model=dict)
@@ -178,43 +184,50 @@ def admin_create_criteria(
     db: Session = Depends(get_db),
 ):
     """Создать критерий (опционально привязанный к событию)."""
-    # Проверка события если указано
-    if payload.event_id:
-        from ..models import Event
-        event = db.query(Event).filter(Event.id == payload.event_id).first()
-        if not event:
-            raise HTTPException(status_code=404, detail="Событие не найдено")
-        if not event.is_active:
-            raise HTTPException(status_code=400, detail="Нельзя добавлять критерии к неактивному событию")
+    try:
+        # Проверка события если указано
+        if payload.event_id:
+            from ..models import Event
+            event = db.query(Event).filter(Event.id == payload.event_id).first()
+            if not event:
+                raise HTTPException(status_code=404, detail="Событие не найдено")
+            if not event.is_active:
+                raise HTTPException(status_code=400, detail="Нельзя добавлять критерии к неактивному событию")
+            
+            # Проверка уникальности в рамках события
+            existing = db.query(Criterion).filter(
+                Criterion.event_id == payload.event_id,
+                Criterion.name == payload.name.strip()
+            ).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="Критерий с таким названием уже существует в этом событии")
+        else:
+            # Глобальный критерий - проверяем глобальную уникальность
+            existing = db.query(Criterion).filter(
+                Criterion.event_id.is_(None),
+                Criterion.name == payload.name.strip()
+            ).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="Глобальный критерий с таким названием уже существует")
         
-        # Проверка уникальности в рамках события
-        existing = db.query(Criterion).filter(
-            Criterion.event_id == payload.event_id,
-            Criterion.name == payload.name.strip()
-        ).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Критерий с таким названием уже существует в этом событии")
-    else:
-        # Глобальный критерий - проверяем глобальную уникальность
-        existing = db.query(Criterion).filter(
-            Criterion.event_id.is_(None),
-            Criterion.name == payload.name.strip()
-        ).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Глобальный критерий с таким названием уже существует")
-    
-    c = Criterion(
-        event_id=payload.event_id,
-        name=payload.name.strip(), 
-        description=(payload.description or "").strip(), 
-        max_score=float(payload.max_score), 
-        active=bool(payload.active)
-    )
-    db.add(c)
-    db.flush()
-    write_audit(db, actor_type="admin", actor_user_id=None, action="create", entity_type="criterion", entity_id=c.id, after={"event_id": c.event_id, "name": c.name, "max_score": float(c.max_score), "active": bool(c.active)}, ip=ip)
-    db.commit()
-    return {"id": c.id}
+        c = Criterion(
+            event_id=payload.event_id,
+            name=payload.name.strip(), 
+            description=(payload.description or "").strip(), 
+            max_score=float(payload.max_score), 
+            active=bool(payload.active)
+        )
+        db.add(c)
+        db.flush()
+        write_audit(db, actor_type="admin", actor_user_id=None, action="create", entity_type="criterion", entity_id=c.id, after={"event_id": c.event_id, "name": c.name, "max_score": float(c.max_score), "active": bool(c.active)}, ip=ip)
+        db.commit()
+        return {"id": c.id}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        tb = traceback.format_exc()
+        print(f"[admin_create_criteria] ERROR:\n{tb}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(exc)}")
 
 
 @router.patch("/criteria/{criterion_id}", response_model=dict)
@@ -224,34 +237,41 @@ def admin_update_criteria(
     ip: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    c = db.query(Criterion).filter(Criterion.id == criterion_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Критерий не найден")
+    try:
+        c = db.query(Criterion).filter(Criterion.id == criterion_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Критерий не найден")
 
-    before = {"event_id": c.event_id, "name": c.name, "description": c.description, "max_score": float(c.max_score), "active": bool(c.active)}
+        before = {"event_id": c.event_id, "name": c.name, "description": c.description, "max_score": float(c.max_score), "active": bool(c.active)}
 
-    if payload.name is not None:
-        # Проверяем уникальность в рамках события (или глобально)
-        event_id = c.event_id
-        name_q = db.query(Criterion).filter(Criterion.name == payload.name.strip(), Criterion.id != criterion_id)
-        if event_id:
-            name_q = name_q.filter(Criterion.event_id == event_id)
-        else:
-            name_q = name_q.filter(Criterion.event_id.is_(None))
-        if name_q.first():
-            raise HTTPException(status_code=400, detail="Название критерия уже существует")
-        c.name = payload.name.strip()
-    if payload.description is not None:
-        c.description = payload.description.strip()
-    if payload.max_score is not None:
-        c.max_score = float(payload.max_score)
-    if payload.active is not None:
-        c.active = bool(payload.active)
+        if payload.name is not None:
+            # Проверяем уникальность в рамках события (или глобально)
+            event_id = c.event_id
+            name_q = db.query(Criterion).filter(Criterion.name == payload.name.strip(), Criterion.id != criterion_id)
+            if event_id:
+                name_q = name_q.filter(Criterion.event_id == event_id)
+            else:
+                name_q = name_q.filter(Criterion.event_id.is_(None))
+            if name_q.first():
+                raise HTTPException(status_code=400, detail="Название критерия уже существует")
+            c.name = payload.name.strip()
+        if payload.description is not None:
+            c.description = payload.description.strip()
+        if payload.max_score is not None:
+            c.max_score = float(payload.max_score)
+        if payload.active is not None:
+            c.active = bool(payload.active)
 
-    write_audit(db, actor_type="admin", actor_user_id=None, action="update", entity_type="criterion", entity_id=c.id, before=before, after={"name": c.name, "description": c.description, "max_score": float(c.max_score), "active": bool(c.active)}, ip=ip)
-    db.add(c)
-    db.commit()
-    return {"ok": True}
+        write_audit(db, actor_type="admin", actor_user_id=None, action="update", entity_type="criterion", entity_id=c.id, before=before, after={"name": c.name, "description": c.description, "max_score": float(c.max_score), "active": bool(c.active)}, ip=ip)
+        db.add(c)
+        db.commit()
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        tb = traceback.format_exc()
+        print(f"[admin_update_criteria] ERROR:\n{tb}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(exc)}")
 
 
 @router.delete("/criteria/{criterion_id}", response_model=dict)
